@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F3F1EC">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="מלווה התנסות">
+<title>מלווה התנסות קלינית</title>
+<style>
+:root{
+  --paper:#F3F1EC; --card:#FFFFFF; --ink:#23242B; --muted:#6B6D78; --line:#E4E1D8;
+  --indigo:#5B67C0; --indigo-soft:#E6E8F6; --indigo-light:#C9CDEB;
+  --sage:#6F9A7E; --sage-soft:#E3EEE6;
+  --amber:#C98A1B; --amber-soft:#FBF0DA;
+  --red:#C2483D; --red-soft:#F8E1DE;
+  --radius:14px; --nav-h:64px;
+  --font: Rubik, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--indigo)}
+header.top{position:sticky;top:0;z-index:5;background:var(--paper);padding:12px 16px 8px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px}
+header.top h1{font-size:18px;margin:0;font-weight:700}
+header.top .saved{font-size:12px;color:var(--muted);white-space:nowrap}
+main{padding:12px 16px calc(var(--nav-h) + 24px);max-width:640px;margin:0 auto}
+nav.bottom{position:fixed;bottom:0;left:0;right:0;height:calc(var(--nav-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:var(--card);border-top:1px solid var(--line);display:flex;z-index:10}
+nav.bottom a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-decoration:none;color:var(--muted);font-size:13px;gap:2px}
+nav.bottom a .ic{font-size:20px;line-height:1}
+nav.bottom a.on{color:var(--indigo);font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+.card h2{font-size:16px;margin:0 0 8px}
+.card h3{font-size:15px;margin:12px 0 6px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bar{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin:6px 0}
+.bar > span{display:block;height:100%;background:var(--indigo);border-radius:6px}
+.bar.sage > span{background:var(--sage)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:10px 16px;border-radius:12px;border:1px solid var(--indigo);background:var(--indigo);color:#fff;font-weight:600;cursor:pointer;text-decoration:none;width:100%}
+.btn.sec{background:var(--card);color:var(--indigo)}
+.btn.ghost{background:transparent;border-color:var(--line);color:var(--ink)}
+.btn.danger{background:var(--card);border-color:var(--red);color:var(--red)}
+.btn.small{min-height:36px;padding:6px 12px;font-size:14px;width:auto}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btns > .btn{flex:1}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;background:var(--indigo-soft);color:var(--indigo)}
+.pill.green{background:var(--sage-soft);color:#3F6B4F}
+.pill.amber{background:var(--amber-soft);color:#8A5D0E}
+.pill.red{background:var(--red-soft);color:var(--red)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle}
+.banner{border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+.banner.warn{background:var(--amber-soft);border:1px solid #EBD3A5}
+.banner.err{background:var(--red-soft);border:1px solid #EDB9B3}
+.banner.info{background:var(--indigo-soft);border:1px solid var(--indigo-light)}
+label.f{display:block;margin:10px 0 4px;font-size:14px;color:var(--muted)}
+input[type=text],input[type=date],input[type=number],input[type=search],select,textarea{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff}
+textarea{min-height:80px;resize:vertical}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;min-height:44px;border:0;background:#fff;cursor:pointer;border-inline-start:1px solid var(--line)}
+.seg button:first-child{border-inline-start:0}
+.seg button.on{background:var(--indigo);color:#fff;font-weight:600}
+.chk{display:flex;align-items:center;gap:10px;min-height:44px}
+.chk input{width:22px;height:22px;accent-color:var(--indigo)}
+.list{list-style:none;margin:0;padding:0}
+.list li{padding:10px 0;border-bottom:1px solid var(--line)}
+.list li:last-child{border-bottom:0}
+ol.plain{margin:0;padding-inline-start:22px}
+ol.plain li{margin:4px 0}
+.tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;min-height:84px;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);text-decoration:none;color:var(--ink)}
+.tile b{font-size:15px}
+.tile span{font-size:12px;color:var(--muted)}
+/* attendance */
+.att{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.att:last-child{border-bottom:0}
+.att .d{font-weight:600}
+/* skills */
+details.cat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;overflow:hidden}
+details.cat > summary{list-style:none;padding:12px 14px;cursor:pointer}
+details.cat > summary::-webkit-details-marker{display:none}
+details.cat[open] > summary{border-bottom:1px solid var(--line)}
+.skill{padding:10px 14px;border-bottom:1px solid var(--line)}
+.skill:last-child{border-bottom:0}
+.skill .name{font-size:15px;margin-bottom:6px}
+.lv{display:flex;gap:6px}
+.lv button{flex:1;min-height:38px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:13px;cursor:pointer}
+.lv button.on[data-lv=observed]{background:var(--indigo-light);border-color:var(--indigo-light);color:#2E357A;font-weight:600}
+.lv button.on[data-lv=guided]{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:600}
+.lv button.on[data-lv=supervised]{background:var(--sage);border-color:var(--sage);color:#fff;font-weight:600}
+.chips{display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap}
+.chips button{min-height:36px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:14px}
+.chips button.on{background:var(--indigo);border-color:var(--indigo);color:#fff}
+.tel{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.tel:last-child{border-bottom:0}
+.tel a.call{white-space:nowrap;text-decoration:none;background:var(--indigo-soft);padding:8px 12px;border-radius:10px;font-weight:600;direction:ltr}
+.back{display:inline-block;margin-bottom:10px;text-decoration:none;font-size:14px}
+.empty{text-align:center;color:var(--muted);padding:16px 0}
+.ltr{direction:ltr;unicode-bidi:isolate}
+/* print */
+.print-only{display:none}
+table.pt{width:100%;border-collapse:collapse;table-layout:fixed;margin:8px 0;font-size:14px}
+table.pt th,table.pt td{border:1px solid #999;padding:6px;text-align:center}
+table.pt th{background:#eee}
+table.pt td.r{text-align:right}
+@media print{
+  body{background:#fff}
+  header.top,nav.bottom,.no-print{display:none !important}
+  main{padding:0;max-width:none}
+  .card{border:0;padding:0}
+  .print-only{display:block}
+  details.cat{border:0}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1 id="title">מלווה התנסות</h1>
+  <span class="saved" id="saved"></span>
+</header>
+<main id="app"></main>
+<nav class="bottom" id="nav">
+  <a href="#home" data-tab="home"><span class="ic">⌂</span>בית</a>
+  <a href="#skills" data-tab="skills"><span class="ic">✓</span>מיומנויות</a>
+  <a href="#log" data-tab="log"><span class="ic">▤</span>יומן</a>
+  <a href="#more" data-tab="more"><span class="ic">⋯</span>עוד</a>
+</nav>
+<input type="file" id="fileIn" accept="application/json,.json" hidden>
+
+<script>
+"use strict";
+/* =====================================================================
+   CONFIG — כל התוכן הקבוע מהתדריך. עדכון התדריך = עריכת האובייקט הזה.
+   ===================================================================== */
+const CONFIG = {
+  course: "סיעוד המבוגר א' · הסבה ט'",
+  institution: 'המרכז הרפואי ת"א',
+  dates: { start: "2026-10-04", end: "2026-11-14", formsDue: "2026-11-28" },
+  hours: { field: 144, sim: 24, total: 168, perDay: 8, totalDays: 21 },
+  absence: { limitPct: 0.20, yellowFromDays: 2, redFromDays: 4 },
+  backupReminderDays: 3,
+  shifts: { AM: "בוקר 07:00–15:00", PM: "ערב 15:00–23:00", NIGHT: "לילה 23:00–07:00" },
+  shiftShort: { AM: "בוקר", PM: "ערב", NIGHT: "לילה" },
+  // רמות מיומנות — לפי שיטת ההדרכה (הדגמה ← שיתוף ← פיקוח). לעדכן אם המדריכה מסמנת אחרת.
+  skillLevels: [
+    { key: "observed",   label: "נצפה" },
+    { key: "guided",     label: "בהדרכה" },
+    { key: "supervised", label: "בפיקוח" }
+  ],
+  // נספח 10 — דף תרגול מיומנויות קליניות + תרגול מיומנויות במעבדה
+  skillCats: [
+    { key:"gen", name:"מיומנויות – כללי", items:[
+      "איסוף נתונים על מצב מטופלים מהרשומות הרפואיות והסיעודיות, צוות המחלקה, מטופל ומשפחתו",
+      "ראיון מיידע (אנמנזה)",
+      "הכרת הליך ביצוע הוראה רפואית (הוראה כתובה, בעל פה)",
+      "הגדרת בעיות סיעודיות",
+      "תכנון התערבות/תכנית טיפול",
+      "תיעוד ברשימה סיעודית ממוחשבת",
+      "פענוח ממצאי בדיקות מעבדה",
+      "טיפול באירוע חריג"]},
+    { key:"vs", name:"סימנים חיוניים", items:[
+      "לחץ דם","דופק","חום (PO, PR, PA)","מספר נשימות","מדידת סטורציה","אומדן כאב"]},
+    { key:"skin", name:"אומדן פיזיקלי – עור", items:[
+      "הסתכלות","מישוש","זיהוי נגעים","שיער","ציפורניים","ריריות","צבע",
+      "איתור סיכון לפצעי לחץ","אומדן פצע","אומדן פתחי נקזים",
+      "החלטה על טיפול בחבישות ומשחות בפצעי לחץ מדרגה ראשונה ושנייה"]},
+    { key:"cv", name:"אומדן לב וכלי דם", items:[
+      "האזנה לקולות הלב","אומדן כלי דם","חיבור/ניתוק ממוניטור",
+      "זיהוי הפרעות בקצב הלב (VT, VF, AF)","ביצוע אק\"ג"]},
+    { key:"neuro", name:"מצב הכרה", items:[
+      "סטטוס מנטלי – Mini Mental State Test","תפקוד מוטורי","תפקוד סנסורי (תחושה וחושים)","אומדן שינה"]},
+    { key:"inf", name:"מניעת זיהומים", items:[
+      "רחצת ידיים","עטית כפפות סטריליות","פתיחת חבילה סטרילית","טיפול בחומר סטרילי"]},
+    { key:"iso", name:"טיפול במטופל בבידוד", items:["מגע","אויר","נשימתי"]},
+    { key:"edu", name:"הדרכת מטופלים", items:[
+      "זכויות המטופל","אומדן צרכי הדרכה","לפני התערבות ניתוחית","לאחר התערבות ניתוחית","לבדיקות מעבדה",
+      "הדרכה לפני טיפול/להתמודדות עם בעיות ספציפיות (סוכרת, יתר לחץ דם, פצעי לחץ, בעיות נשימה, הפרשות, כלכלה, ציוד רפואי)",
+      "הדרכה לבידוד",
+      "הדרכה לקראת שחרור (טיפול תרופתי, תזונה מתאימה, טיפול בפצעים, הפחתת כאב, טיפולים מיוחדים, הפניה להמשך טיפול, שימוש באמצעי עזר, ווידוא הבנת המידע)",
+      "מתן הדרכה ואישור כתוב למלווה אישי לביצוע פעולות שהותרו לו ע\"י מנכ\"ל משרד הבריאות"]},
+    { key:"adm", name:"קבלה ושחרור מטופל ממחלקה", items:[
+      "קבלת מטופל לאשפוז (הצגה עצמית, הסבר בע\"פ, מתן דף מידע, אנמנזה סיעודית, ביצוע אומדנים, הדרכת מטופל, התייחסות לבעיות דחופות)",
+      "הכנת מטופל לבדיקות אבחון פולשניות",
+      "הכנת מטופל לניתוח (הכנה פיזית, הכנה אדמיניסטרטיבית, הדרכת חולה ומשפחתו)",
+      "שליחת חולה לניתוח",
+      "קבלת מטופל מניתוח (הכנת יחידה, אומדן הכרה וסימנים חיוניים, טיפול בכאב, אומדן פצעי ניתוח ונקזים, הדרכת מטופל ומשפחתו)",
+      "שחרור מטופל מהמחלקה (כתיבת מכתב שחרור סיעודי, הדרכה, דווח ברשומות)",
+      "טיפול בנפטר (שמירה על כבוד המת, הכרת תהליך ותמיכה במשפחה)"]},
+    { key:"lines", name:"טיפול בנקזים וצנתרים", items:[
+      "אומדן וטיפול בנקזים כירורגיים (כמות ההפרשה, תוכן, עור מסביב, החלפת חבישה)",
+      "לקיחת דם ורידי לבדיקות שגרה, לא כולל סוג והצלבה",
+      "התחלת עירוי בווריד פריפרי","ניהול מאזן נוזלים ואלקטרוליטים","ויסות קצב נוזלים בעירוי פריפרי",
+      "החלפת קיבוע בעירוי","שטיפת וריד עם Heparin Flush 100Units/cc/NaCl 0.9%",
+      "החלפת שקית עירוי בווריד פריפרי","החלפת סט עירוי בווריד פריפרי","הוצאת עירוי מוריד פריפרי",
+      "אומדן פתח כניסת צנתר לווריד מרכזי","אומדן פתח כניסת צנתר לווריד פריפרי",
+      "שאיבת דם מצנתר בווריד מרכזי ומערכות חלופיות לווריד",
+      "שטיפת צנתר בווריד מרכזי ומערכות חלופיות לווריד עם Heparin Flush 100Units/cc",
+      "החלפת קיבוע לצנתר בווריד מרכזי ומערכות חלופיות לווריד",
+      "מדידה וניטור C.V.P","סיוע בהחדרת צנתר מרכזי","הוצאת צנתר מוריד מרכזי"]},
+    { key:"samp", name:"סיוע ולקיחת דגימות לבדיקה", items:[
+      "לקיחת דגימת שתן לתרבית/כללית/איסוף","לקיחת בדיקות דם","לקיחת תרביות","לקיחת דגימות צואה",
+      "לקיחת דגימות כיח","סיוע בביצוע ניקור מותני","סיוע בביצוע ביופסיה","לקיחת משטח (גרון, וגינלי)"]},
+    { key:"meds", name:"ניהול הטיפול התרופתי", items:[
+      "הדרכה לנטילת טיפול תרופתי","הכנת תרופה בהתאם לכללים","מתן תרופה בדרך פומית PO",
+      "הזרקה תוך עורית IC","הזרקה תת עורית SC","הזרקה לתוך השריר IM","מתן תרופה דרך זונדה PZ",
+      "מתן תרופות באינהלציה INH","הכנת תרופות להזרקה תוך ורידית IV לרבות מהילה",
+      "הזרקת תרופות לחלל אפידורלי על פי רשימת תרופות (הזרקה ראשונה תבוצע ע\"י רופא)",
+      "החלטה על מתן תרופות OTC","ביצוע בקרה כפולה ובלתי תלויה","רישום ודיווח מתן סמים מסוכנים",
+      "הערכת תוצאות הטיפול התרופתי","הדרכת מטופל לשימוש במכשיר PCA","מתן TPN","צפייה במתן דם",
+      "הקזת דם טיפולית","הקזת דם מתורם בריא"]},
+    { key:"resp", name:"מערכת הנשימה", items:[
+      "אומדן בית חזה (הסתכלות, מישוש, ניקוש, האזנה)",
+      "אומדן נשימה (קצב נשימות, אופי, עומק, שימוש בשרירי עזר, כחלון, קולות נשימה)",
+      "החלטה על מתן חמצן והפסקתו למטופל מבוגר באשפוז, באמצעות מערכות זרימה נמוכה",
+      "התאמה והחדרת נתיב אויר לחולה (AIRWAY)","פיזיותרפיה נשימתית/ניקוז תנוחתי","שאיבת הפרשות מחלל הפה",
+      "מתן חמצן באמצעות: משקפי חמצן, מסכה, נבולייזר","התאמת תנוחת החולה למצבו הנשימתי",
+      "זיהוי קוצר נשימה, אפניאה","פיענוח תוצאות בדיקת גזים בדם",
+      "חיבור וניתוק חולה ממכונת הנשמה לצורך שאיבת הפרשות","שאיבת הפרשות מטובוס","שאיבת הפרשות מטרכאוסטומי",
+      "שאיבת הפרשות דרך מערכת סקשן סגורה","סיוע באינטובציה","סיוע באקסטובציה",
+      "החזרת קנולה לטרכיאה כפעולה מצילת חיים, למטופל עם פיום קנה (טרכיאוסטומיה)"]},
+    { key:"gi", name:"מערכת העיכול", items:[
+      "אומדן יכולת בליעה","התאמת סוג תזונה למטופל","האכלת מטופל","החדרת זונדה לחולה בהכרה",
+      "אומדן בטן (הסתכלות, האזנה, ניקוש ומישוש)",
+      "החדרת זונדה לחולה מחוסר הכרה ללא טובוס או טרכיאוסטומי לניקוז/הזנה",
+      "בדיקת מיקום זונדה","שטיפת זונדה","החלפת קיבוע זונדה למטופל","האכלה באמצעות זונדה",
+      "האכלה באמצעות PEG","האכלה באמצעות Jejunostom","הוצאת זונדה",
+      "החלטה על החלפה או החזרה של צינורית גסטרוסטום שניזוקה או נשלפה וביצוע הפעולה",
+      "ביצוע חוקן","אומדן פעילות מעיים כולל רישום","הוצאת אבני צואה"]},
+    { key:"gu", name:"מערכת שתן", items:[
+      "אומדן שתן","החדרת צנתר לשלפוחית השתן","שטיפת קטטר","החלפת שקית שתן",
+      "מדידת שתן באמצעות מד שתן Urinometer","הוצאת צנתר משלפוחית השתן","טיפול בחולה עם Nephrostomy/Cystectomy"]},
+    { key:"endo", name:"מערכת אנדוקרינית", items:[
+      "אומדן כף רגל סוכרתית","מדידת רמות סוכר בדם","מתן אינסולין","הדרכת חולה עם מחלת סוכרת"]},
+    { key:"hyg", name:"היגיינה", items:[
+      "אומדן היגיינה אישית","החלטה על ביצוע טיפול ADL","טיפול פה","טיפול בשיניים תותבות",
+      "רחצת מטופל במקלחת","רחצת מטופל מורכב במיטה"]},
+    { key:"wound", name:"עור – טיפול בפצעים", items:[
+      "סיוע בביצוע פעולות כירורגיות: תפירה/פתיחת אבצס","הוצאת תפרים מפצע ניתוח","הוצאת סיכות מפצע ניתוח",
+      "הדבקת פצע","חבישת פצע","טיפול בחתך ניתוחי","טיפול בפצע לחץ","טיפול בכוויות",
+      "החלטה על טיפול בחבישות ומשחות בפצעי לחץ מדרגה ראשונה ושניה"]},
+    { key:"mob", name:"שלד שרירים – ניעות וניידות", items:[
+      "חבישה באגדים אלסטיים","שינויי תנוחה במיטה","הורדת חולה מהמיטה",
+      "הדרכת מטופל להליכה באמצעות קביים","הדרכת מטופל להליכה באמצעות הליכון","אומדן יציבה וניעות",
+      "אומדן איתור סיכון לנפילה","הרמה וניוד מטופלים בצורה בטוחה למטופל ולמטפל",
+      "התאמת מיטת החולה ותנוחתו לצורך סיוע נשימתי",
+      "החלטה בדבר הגבלה/התרת הגבלה לצורך מתן טיפול רפואי"]},
+    { key:"lab", name:"תרגול מיומנויות במעבדה (24 ש')", items:[
+      "בטיחות בקטריאלית, התמגנות והוספת פריט לשדה סטרילי","סימנים חיוניים","מתן חמצן והכנת אינהלציה",
+      "אומדן עירוי, החלפת קיבוע ושטיפת VL","הכנת סט נוזלים ומתן תרופה ברת-סיכון (אלקטרוליטים מרוכזים)",
+      "הכנסת והוצאת זונדה","הכנסת והוצאת קטטר שתן","מיומנויות תקשורת",
+      "הזרקת SC (אינסולין, CLEXANE) והזרקת IM","ניהול טיפול תרופתי"]}
+  ],
+  // נספח 11 — רשימת תיוג: תיאום ציפיות
+  expectations: [
+    "הצגת מטרות ההתנסות",
+    "הצגת משימות/מטלות",
+    "קביעת מועדים לביצוע מטלות והגשתן (ת. טיפול, דיון קליני)",
+    "התנהגות אישית ומקצועית",
+    "כללי התנהגות: מסגרת שעות ההתנסות, התחלה, סיום, הפסקות, חזרה מהפסקות, היעדרויות, איחורים, קוד לבוש",
+    "דרכי תקשורת וכללי דיווח",
+    "מקורות מידע רלוונטיים",
+    "הגדרת רמת הפיקוח במהלך ביצוע מיומנויות קליניות (מבוסס על הרמה בפנקס המיומנויות)",
+    "רשימת תרופות שכיחות במחלקה",
+    "התמצאות במחלקה: אנשי צוות, תפקידים, שיטות עבודה, נהלי עבודה ונהלים קריטיים, רשומות",
+    "מבנה פיזי: כיבוי אש, התנהגות ברעידת אדמה, דרכי מילוט, מספרי טלפון משמעותיים",
+    "מדיניות הארגון: זיהוי נכון, תרופות בנות סיכון, נפילות, פסק זמן, היגיינת ידיים ומניעת זיהומים, תקשורת יעילה"
+  ],
+  ipsg: [
+    "זיהוי מטופלים",
+    "בטיחות של תרופות בנות סיכון",
+    "הפחתת הסיכון לנזק למטופל הנובע מנפילה",
+    "היגיינת ידיים להפחתת הסיכון לזיהומים הקשורים לטיפול רפואי",
+    "תקשורת יעילה בין מטפלים (ISBAR, READ BACK)",
+    "תהליך אימות וסימון איברים להליכים ניתוחיים/פולשניים"
+  ],
+  criticalProcedures: [
+    "זיהוי מטופלים במערך האשפוז והאמבולטורי",
+    "ניהול הטיפול התרופתי",
+    "נוהל החייאה",
+    "נוהל נטילת דגימות לסוג וסקר ומתן דם ומוצריו",
+    "ניהול מלאי ומתן סמים מסוכנים במערך האשפוז ובמערך האמבולטורי",
+    "נוהל העברת חולה במצב קריטי מיעד ליעד",
+    "היגיינת ידיים",
+    "טיפול ומניעת אירועים חריגים",
+    "נוהל הערכה, מעקב, העברה ושחרור מטופלים (נוהל מס' 10)"
+  ],
+  highRiskMeds: {
+    main: ["SC/IV INSULIN","IV HEPARIN","IV DIGOXIN (בביה\"ח \"דנה\": PO DIGOXIN, IV DIGOXIN)","CHEMOTHERAPY"],
+    electrolytes: ["Inj. POTASSIUM CHLORIDE (KCl) 15%","Inj. MAGNESIUM SULFATE (MgSO4) 50%","Inj. POTASSIUM PHOSPHATES (KH2PO4)","Inj. SODIUM CHLORIDE (NaCl) 23.4%"],
+    notes: [
+      "מתן תרופה ברת-סיכון מחייב בקרה כפולה.",
+      "כל שלבי מתן הטיפול התרופתי — מההכנה בחדר התרופות ועד המתן למטופל — רק בנוכחות ובפיקוח המדריך/ה."
+    ]
+  },
+  fiveMoments: [
+    "לפני מגע במטופל — בסמוך למגע.",
+    "לפני פעולה אספטית או פרוצדורה — בסמוך לביצוע הפעולה האספטית.",
+    "אחרי פעולה עם אפשרות למגע בנוזלי גוף או הפרשות — מיד לאחר הסרת הכפפות.",
+    "אחרי מגע במטופל.",
+    "אחרי מגע בסביבת המטופל — כולל ציוד ומשטחים — גם כאשר לא היה מגע במטופל."
+  ],
+  handNotes: [
+    "ההעדפה: חיטוי ידיים בספטול.",
+    "רחצה במים זורמים וסבון אנטימיקרוביאלי: כשיש לכלוך נראה לעין, בטיפול במטופלים משלשלים, ואחרי טיפול במטופלים עם (או בחשד ל) קלוסטרידיום דיפיצילה ואחרי מגע בסביבתם.",
+    "כפפות אינן תחליף לחיטוי — היגיינת ידיים לפני עטית כפפות ואחרי הסרתן."
+  ],
+  isbar: [
+    ["I","Identify — זיהוי","מי אני, מאיזו מחלקה; זיהוי המטופל (2 מזהים)."],
+    ["S","Situation — מצב","מה קורה עכשיו, למה אני פונה."],
+    ["B","Background — רקע","אבחנה, סיבת אשפוז, רקע רלוונטי, תרופות, אלרגיות."],
+    ["A","Assessment — הערכה","סימנים חיוניים, ממצאים, מה אני חושב/ת שהבעיה."],
+    ["R","Recommendation — המלצה","מה אני מבקש/ת ובאיזה לוח זמנים."]
+  ],
+  phones: [
+    { name:"צוות החייאה", num:"03-697-2222", desc:"פירוט מדויק של המקום: בניין, קומה, מחלקה, מכון, יחידה, מספר חדר, ילד/מבוגר", urgent:true },
+    { name:"קוד V", num:"03-697-7575", desc:"התנהגות אלימה חמורה / איום ממשי. לומר: \"קוד V במחלקה ___ מדבר ___\"", urgent:true },
+    { name:"חדר בקרה", num:"03-697-4402", desc:"שריפה, חפץ חשוד, ריח של חומר כימי, אירוע חריג שאינו קשור לרפואה" },
+    { name:"מחלקת בטחון", num:"03-697-4747", desc:"מקרים שבהם נדרשת התערבות מחלקת בטחון" },
+    { name:"שירותי תרגום סימולטני", num:"03-697-3888", desc:"ערבית, רוסית, צרפתית, אמהרית, טיגרית. מחוץ לביה\"ח: ‎*5144" },
+    { name:"מזכירות בית הספר", num:"03-697-3549", desc:"" },
+    { name:"מילה פרדקין — מרכזת תחום לימודים קליניים", num:"052-7360561", desc:"דיווח מיידי על אירוע חריג / חשד להטרדה מינית. Mila.fradkin@gmail.com" },
+    { name:"ד\"ר איתן ברודסקי — ממלא מקום מנהלת ביה\"ס", num:"050-8806611", desc:"דיווח על חשד להטרדה מינית" },
+    { name:"איסנה דמרי — מנהלת ביה\"ס, מרכזת תכניות ההסבה", num:"052-7360727", desc:"isanad@tlvmc.gov.il" }
+  ],
+  incident: {
+    report: [
+      "דיווח מיידי — בעל פה ובכתב — למדריך/ה, לאח/ות האחראי/ת ולביה\"ס.",
+      "דיווח מיידי למרכזת התחום: מילה פרדקין 052-7360561.",
+      "המדריך/ה והסטודנט/ית שולחים דו\"ח אירוע חריג (נספח 6) בדוא\"ל אל: מילה פרדקין, אפרת צדיק (מרכזת המסלול), איסנה דמרי (מנהלת ביה\"ס), ד\"ר איתן ברודסקי."
+    ],
+    examples: "אירוע חריג: טיפול תרופתי, נפילות, תלונות, או כל אירוע הכרוך בהפרת בטיחות המטופל או הפרת נוהל.",
+    reportFields: ["נושא האירוע","תיאור האירוע ברצף כרונולוגי (מדריך/ה)","תיאור האירוע ברצף כרונולוגי (סטודנט/ית)","חתימות"]
+  },
+  closingForms: [
+    "טופס הערכה מסכמת (נספח 3) — מלא וחתום",
+    "טופס הערכה מעצבת (נספח 2) — מלא וחתום",
+    "טופס דיווח שעות (נספח 4) — חתום ע\"י המדריך/ה",
+    "דף מיומנויות (נספח 10) — חתום ע\"י המדריך/ה"
+  ]
+};
+
+/* =====================================================================
+   STATE + storage
+   ===================================================================== */
+const STORE_KEY = "clinical.v1";
+const PREIMPORT_KEY = "clinical.preimport";
+const SCHEMA_VERSION = 1;
+
+function blankState(){
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    student: { name:"", track:"הסבה ט'", ward:"", institution: CONFIG.institution, instructor:"" },
+    attendance: [],
+    skills: {},
+    expectations: {},
+    patients: [],
+    meta: { created: new Date().toISOString(), lastChange: null, lastFileSave: null }
+  };
+}
+
+let storageOK = true;
+let STATE = load();
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return blankState();
+    return migrate(JSON.parse(raw));
+  }catch(e){
+    console.error("load failed", e);
+    storageOK = false;
+    return blankState();
+  }
+}
+function migrate(s){
+  // schemaVersion 1 is the first version; future migrations go here.
+  const b = blankState();
+  const out = Object.assign(b, s);
+  out.student = Object.assign(blankState().student, s.student||{});
+  out.meta = Object.assign(blankState().meta, s.meta||{});
+  out.attendance = Array.isArray(s.attendance) ? s.attendance : [];
+  out.skills = s.skills && typeof s.skills==="object" ? s.skills : {};
+  out.expectations = s.expectations && typeof s.expectations==="object" ? s.expectations : {};
+  out.schemaVersion = SCHEMA_VERSION;
+  return out;
+}
+let saveTimer = null;
+function commit(){
+  STATE.meta.lastChange = new Date().toISOString();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(persist, 300);
+}
+function persist(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
+    storageOK = true;
+  }catch(e){
+    console.error("save failed", e);
+    storageOK = false;
+  }
+  renderSaved();
+}
+
+/* =====================================================================
+   Utils
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function parseISO(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function fmtDate(s){ if(!s) return ""; const [y,m,d]=s.split("-"); return d+"."+m+"."+y.slice(2); }
+function dayName(s){ return ["א'","ב'","ג'","ד'","ה'","ו'","ש'"][parseISO(s).getDay()]; }
+function daysBetween(a,b){ return Math.round((parseISO(b)-parseISO(a))/86400000); }
+function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
+function pct(a,b){ return b? Math.min(100, Math.round(a/b*100)) : 0; }
+function num(n){ return (Math.round(n*10)/10).toString(); }
+function skillKey(catKey, label){ return catKey+"|"+label; }
+function ago(iso){
+  if(!iso) return "";
+  const m = Math.floor((Date.now()-new Date(iso).getTime())/60000);
+  if(m<1) return "נשמר עכשיו";
+  if(m<60) return "נשמר לפני "+m+" דק'";
+  const h=Math.floor(m/60); if(h<24) return "נשמר לפני "+h+" ש'";
+  return "נשמר לפני "+Math.floor(h/24)+" ימים";
+}
+
+/* =====================================================================
+   Derived numbers
+   ===================================================================== */
+function stats(){
+  const att = STATE.attendance;
+  let field=0, sim=0, absentDays=0, absentHours=0, makeups=0, daysDone=new Set();
+  const missingDocs=[];
+  att.forEach(a=>{
+    const h = Number(a.hours)||0;
+    if(a.status==="present"||a.status==="makeup"){
+      if(a.type==="sim") sim+=h; else field+=h;
+      daysDone.add(a.date+a.type);
+      if(a.status==="makeup") makeups++;
+    } else if(a.status==="absent"){
+      absentDays++; absentHours+= h||CONFIG.hours.perDay;
+      if(!a.absenceDocProvided) missingDocs.push(a);
+    }
+  });
+  const limitHours = CONFIG.hours.total*CONFIG.absence.limitPct;
+  return { field, sim, total: field+sim, absentDays, absentHours, makeups, days: daysDone.size, missingDocs, limitHours };
+}
+function practicumPhase(dateISO){
+  const {start,end} = CONFIG.dates;
+  if(dateISO < start) return { state:"before", week:0 };
+  if(dateISO > end) return { state:"after", week: Math.ceil((daysBetween(start,end)+1)/7) };
+  return { state:"during", week: Math.floor(daysBetween(start,dateISO)/7)+1 };
+}
+function absenceLevel(days){
+  if(days>=CONFIG.absence.redFromDays) return "red";
+  if(days>=CONFIG.absence.yellowFromDays) return "amber";
+  return "green";
+}
+function skillStats(cat){
+  let done=0, sup=0;
+  cat.items.forEach(l=>{ const s=STATE.skills[skillKey(cat.key,l)]; if(s&&s.level){ done++; if(s.level==="supervised") sup++; } });
+  return { done, sup, total: cat.items.length };
+}
+function allSkillStats(){
+  let done=0,total=0; CONFIG.skillCats.forEach(c=>{const s=skillStats(c); done+=s.done; total+=s.total;}); return {done,total};
+}
+
+/* =====================================================================
+   Views
+   ===================================================================== */
+const VIEWS = {};
+const TAB_OF = { home:"home", skills:"skills", log:"log", more:"more", aids:"more", ipsg:"more", meds:"more", hands:"more", isbar:"more", phones:"more", incident:"more", procedures:"more", expect:"more", backup:"more", settings:"more", "print-hours":"log", "print-skills":"skills" };
+
+VIEWS.home = () => {
+  const t = todayISO(), ph = practicumPhase(t), s = stats(), sk = allSkillStats();
+  const todayEntry = STATE.attendance.find(a=>a.date===t);
+  const lvl = absenceLevel(s.absentDays);
+  const lvlText = {green:"תקין", amber:"שים/י לב", red:"קרוב לסף 20%"}[lvl];
+  let phaseLine;
+  if(ph.state==="before") phaseLine = "ההתנסות מתחילה ב-"+fmtDate(CONFIG.dates.start);
+  else if(ph.state==="after") phaseLine = "ההתנסות הסתיימה · הגשת טפסים עד "+fmtDate(CONFIG.dates.formsDue);
+  else phaseLine = "שבוע "+ph.week+" · יום "+Math.min(s.days, CONFIG.hours.totalDays)+" מתוך "+CONFIG.hours.totalDays;
+  let html = banners();
+  html += `<div class="card">
+    <div class="row"><h2 style="margin:0">${esc(phaseLine)}</h2>${todayEntry? `<span class="pill">${esc(CONFIG.shiftShort[todayEntry.shift]||"")}</span>`:""}</div>
+    <div class="muted small">${esc(CONFIG.course)} · ${fmtDate(CONFIG.dates.start)}–${fmtDate(CONFIG.dates.end)}</div>
+  </div>`;
+  html += `<div class="card">
+    <div class="row"><h2 style="margin:0">שעות</h2><b>${num(s.total)}/${CONFIG.hours.total}</b></div>
+    <div class="bar"><span style="width:${pct(s.total,CONFIG.hours.total)}%"></span></div>
+    <div class="row small muted"><span>שדה ${num(s.field)}/${CONFIG.hours.field}</span><span>סימולציה ${num(s.sim)}/${CONFIG.hours.sim}</span></div>
+  </div>`;
+  html += `<div class="card">
+    <div class="row"><h2 style="margin:0">היעדרות</h2><span class="pill ${lvl}"><span class="dot" style="background:currentColor"></span> ${s.absentDays===1?'יום 1':s.absentDays+' ימים'} · ${lvlText}</span></div>
+    <div class="small muted" style="margin-top:6px">${num(s.absentHours)} ש' מתוך סף ${num(s.limitHours)} ש' (20% מ-${CONFIG.hours.total}). מעל הסף = חזרה על ההתנסות, גם אם ההיעדרות מוצדקת.</div>
+  </div>`;
+  html += `<div class="card">
+    <div class="row"><h2 style="margin:0">מיומנויות</h2><b>${pct(sk.done,sk.total)}%</b></div>
+    <div class="bar sage"><span style="width:${pct(sk.done,sk.total)}%"></span></div>
+    <div class="small muted">${sk.done} מתוך ${sk.total} סומנו</div>
+  </div>`;
+  if(todayEntry){
+    html += `<div class="card"><div class="row"><span>היום נרשם: <b>${esc(statusLabel(todayEntry.status))}</b> · ${esc(CONFIG.shiftShort[todayEntry.shift])} · ${num(todayEntry.hours)} ש'</span><a class="btn small sec" href="#log/edit/${todayEntry.id}">עריכה</a></div></div>`;
+  } else {
+    html += `<button class="btn" data-act="quickPresent">✓ נוכח/ת היום · בוקר · ${CONFIG.hours.perDay} ש'</button>
+    <div style="text-align:center;margin-top:8px"><a href="#log/new" class="small">רשומה אחרת (סימולציה / משמרת אחרת / היעדרות)</a></div>`;
+  }
+  return html;
+};
+
+function banners(){
+  let h="";
+  if(!storageOK) h+=`<div class="banner err">הדפדפן לא מאפשר שמירה מקומית כרגע. הנתונים לא יישמרו — שמור/י קובץ גיבוי מ"עוד ← גיבוי".</div>`;
+  const s = stats();
+  if(s.missingDocs.length) h+=`<div class="banner warn"><b>אחרי היעדרות:</b> להביא אישור היעדרות (${s.missingDocs.map(a=>fmtDate(a.date)).join(", ")}) ולתאם השלמת שעות עם המדריך/ה. <a href="#log">ליומן</a></div>`;
+  else if(s.absentDays > s.makeups) h+=`<div class="banner warn">${s.absentDays-s.makeups} ימי היעדרות עדיין ללא השלמה. לתאם עם המדריך/ה.</div>`;
+  const last = STATE.meta.lastFileSave;
+  const hasData = STATE.attendance.length || Object.keys(STATE.skills).length;
+  if(hasData && (!last || (Date.now()-new Date(last).getTime()) > CONFIG.backupReminderDays*86400000)){
+    h+=`<div class="banner info">${last? "לא נשמר קובץ גיבוי ב-"+CONFIG.backupReminderDays+" הימים האחרונים." : "עדיין לא נשמר קובץ גיבוי."} <a href="#backup">שמור גיבוי</a></div>`;
+  }
+  return h;
+}
+
+function statusLabel(s){ return {present:"נוכח/ת", absent:"נעדר/ת", makeup:"השלמה"}[s]||s; }
+function typeLabel(t){ return t==="sim"?"סימולציה":"שדה"; }
+
+/* ---------- Log ---------- */
+VIEWS.log = (sub, id) => {
+  if(sub==="new"||sub==="edit") return attForm(sub==="edit" ? STATE.attendance.find(a=>a.id===id) : null);
+  const list = STATE.attendance.slice().sort((a,b)=> b.date.localeCompare(a.date));
+  const s = stats();
+  let html = banners();
+  html += `<div class="card"><div class="row"><h2 style="margin:0">יומן נוכחות ושעות</h2><span class="pill">${num(s.total)}/${CONFIG.hours.total} ש'</span></div>
+    <div class="small muted">שדה ${num(s.field)} · סימולציה ${num(s.sim)} · היעדרויות ${s.absentDays} · השלמות ${s.makeups}</div>
+    <div class="btns" style="margin-top:10px"><a class="btn" href="#log/new">+ רשומה חדשה</a><a class="btn sec" href="#print-hours">הדפסה (נספח 4)</a></div></div>`;
+  html += `<div class="card">`;
+  if(!list.length) html += `<div class="empty">אין רשומות עדיין.</div>`;
+  list.forEach(a=>{
+    const badge = a.status==="absent" ? `<span class="pill red">נעדר/ת</span>` : a.status==="makeup" ? `<span class="pill amber">השלמה</span>` : `<span class="pill green">נוכח/ת</span>`;
+    const flags = [];
+    if(a.status==="absent") flags.push(a.absenceDocProvided? "אישור הועבר ✓" : "חסר אישור");
+    flags.push(a.signed? "חתום ✓" : "לא חתום");
+    html += `<a class="att" href="#log/edit/${a.id}" style="text-decoration:none;color:inherit">
+      <div><div class="d">${dayName(a.date)} ${fmtDate(a.date)} · ${typeLabel(a.type)}</div>
+      <div class="small muted">${esc(CONFIG.shiftShort[a.shift]||"")} · ${num(a.hours)} ש' · ${flags.join(" · ")}</div></div>${badge}</a>`;
+  });
+  html += `</div>`;
+  return html;
+};
+
+let FORM = null;
+function attForm(existing){
+  FORM = existing ? Object.assign({}, existing) : { id:null, date: todayISO(), type:"field", shift:"AM", hours: CONFIG.hours.perDay, status:"present", absenceDocProvided:false, signed:false };
+  return renderAttForm();
+}
+function renderAttForm(){
+  const f = FORM;
+  const seg = (field, opts) => `<div class="seg">${opts.map(([v,l])=>`<button type="button" data-act="formSet" data-field="${field}" data-val="${v}" class="${String(f[field])===String(v)?"on":""}">${l}</button>`).join("")}</div>`;
+  return `<a class="back" href="#log">→ חזרה ליומן</a>
+  <div class="card" id="attForm">
+    <h2>${f.id? "עריכת רשומה":"רשומה חדשה"}</h2>
+    <label class="f">תאריך</label><input type="date" id="fDate" value="${esc(f.date)}" min="2026-09-01" max="2026-12-31">
+    <label class="f">סוג</label>${seg("type",[["field","שדה"],["sim","סימולציה"]])}
+    <label class="f">משמרת</label>${seg("shift",[["AM","בוקר"],["PM","ערב"],["NIGHT","לילה"]])}
+    <label class="f">סטטוס</label>${seg("status",[["present","נוכח/ת"],["absent","נעדר/ת"],["makeup","השלמה"]])}
+    <label class="f">שעות</label><input type="number" id="fHours" inputmode="decimal" min="0" max="12" step="0.5" value="${esc(f.hours)}">
+    ${f.status==="absent" ? `<label class="chk"><input type="checkbox" id="fDoc" ${f.absenceDocProvided?"checked":""}> אישור היעדרות הועבר</label>` : ""}
+    <label class="chk"><input type="checkbox" id="fSigned" ${f.signed?"checked":""}> חתימת מדריך/ה התקבלה</label>
+    <div class="btns" style="margin-top:12px"><button class="btn" data-act="formSave">שמירה</button>${f.id?`<button class="btn danger" data-act="formDelete">מחיקה</button>`:""}</div>
+  </div>`;
+}
+function readFormInputs(){
+  if(!FORM) return;
+  const d=$("#fDate"), h=$("#fHours"), doc=$("#fDoc"), sg=$("#fSigned");
+  if(d) FORM.date=d.value; if(h) FORM.hours=h.value; if(doc) FORM.absenceDocProvided=doc.checked; if(sg) FORM.signed=sg.checked;
+}
+
+/* ---------- Skills ---------- */
+let skillFilter = "all", skillQuery = "", openCats = new Set();
+VIEWS.skills = () => {
+  const sk = allSkillStats();
+  return `<div class="card"><div class="row"><h2 style="margin:0">פנקס מיומנויות</h2><b>${pct(sk.done,sk.total)}%</b></div>
+    <div class="bar sage"><span style="width:${pct(sk.done,sk.total)}%"></span></div>
+    <div class="small muted">${sk.done}/${sk.total} · לחיצה על רמה מסמנת אותה עם תאריך; לחיצה נוספת מבטלת.</div>
+    <div class="small" style="margin-top:6px"><span class="dot" style="background:var(--indigo-light)"></span> נצפה &nbsp; <span class="dot" style="background:var(--indigo)"></span> בהדרכה &nbsp; <span class="dot" style="background:var(--sage)"></span> בפיקוח</div>
+  </div>
+  <input type="search" id="skillSearch" placeholder="🔍 חיפוש מיומנות" value="${esc(skillQuery)}">
+  <div class="chips">
+    ${[["all","הכל"],["todo","לא בוצעו עדיין"],["done","סומנו"]].map(([k,l])=>`<button data-act="skillFilter" data-val="${k}" class="${skillFilter===k?"on":""}">${l}</button>`).join("")}
+    <a class="btn small sec" href="#print-skills" style="margin-inline-start:auto">הדפסה לחתימה</a>
+  </div>
+  <div id="skillList">${skillListHTML()}</div>`;
+};
+function skillListHTML(){
+  const q = skillQuery.trim();
+  let html="", any=false;
+  CONFIG.skillCats.forEach(cat=>{
+    const items = cat.items.filter(l=>{
+      const st = STATE.skills[skillKey(cat.key,l)];
+      if(skillFilter==="todo" && st && st.level) return false;
+      if(skillFilter==="done" && !(st && st.level)) return false;
+      if(q && !l.includes(q) && !cat.name.includes(q)) return false;
+      return true;
+    });
+    if(!items.length) return;
+    any=true;
+    const s = skillStats(cat);
+    const open = q || openCats.has(cat.key);
+    html += `<details class="cat" data-cat="${cat.key}" ${open?"open":""}><summary>
+      <div class="row"><b>${esc(cat.name)}</b><span class="small muted">${s.done}/${s.total}</span></div>
+      <div class="bar sage" style="height:6px;margin-bottom:0"><span style="width:${pct(s.done,s.total)}%"></span></div></summary>`;
+    items.forEach(l=>{
+      const k = skillKey(cat.key,l), st = STATE.skills[k]||{};
+      html += `<div class="skill"><div class="name">${esc(l)}</div>
+        <div class="lv">${CONFIG.skillLevels.map(lv=>`<button data-act="skillLevel" data-key="${esc(k)}" data-lv="${lv.key}" class="${st.level===lv.key?"on":""}">${lv.label}</button>`).join("")}</div>
+        ${st.level? `<div class="small muted" style="margin-top:4px">${fmtDate(st.date)}</div>`:""}
+      </div>`;
+    });
+    html += `</details>`;
+  });
+  if(!any) html = `<div class="empty">אין מיומנויות שמתאימות לסינון.</div>`;
+  return html;
+}
+
+/* ---------- More ---------- */
+VIEWS.more = () => {
+  const exDone = CONFIG.expectations.filter((_,i)=>STATE.expectations[i] && STATE.expectations[i].date).length;
+  const tiles = [
+    ["#phones","טלפונים","החייאה, קוד V, בקרה, תרגום"],
+    ["#ipsg","IPSG","6 יעדי בטיחות המטופל"],
+    ["#meds","תרופות בנות סיכון","נספח 8 · בקרה כפולה"],
+    ["#hands","5 הרגעים","היגיינת ידיים · נספח 9"],
+    ["#isbar","ISBAR","תבנית דיווח + READ BACK"],
+    ["#incident","אירוע חריג","למי מדווחים ומתי"],
+    ["#procedures","נהלים קריטיים","נספח 1 · 9 נהלים"],
+    ["#expect","תיאום ציפיות",`נספח 11 · ${exDone}/${CONFIG.expectations.length}`],
+    ["#backup","גיבוי","שמירה ופתיחה של קובץ"],
+    ["#settings","הגדרות","פרטי סטודנט ומחיקה"]
+  ];
+  return `<div class="tile-grid">${tiles.map(([h,b,s])=>`<a class="tile" href="${h}"><b>${b}</b><span>${s}</span></a>`).join("")}</div>`;
+};
+const back = `<a class="back" href="#more">→ חזרה</a>`;
+
+VIEWS.phones = () => `${back}<div class="card"><h2>טלפונים חשובים (נספח 7)</h2>
+  ${CONFIG.phones.map(p=>`<div class="tel"><div><b>${esc(p.name)}</b>${p.desc?`<div class="small muted">${esc(p.desc)}</div>`:""}</div>
+  <a class="call" href="tel:${p.num.replace(/[^0-9*+]/g,"")}" ${p.urgent?'style="background:var(--red-soft);color:var(--red)"':""}>${esc(p.num)}</a></div>`).join("")}
+  </div>`;
+
+VIEWS.ipsg = () => `${back}<div class="card"><h2>IPSG — יעדי בטיחות המטופל</h2><ol class="plain">${CONFIG.ipsg.map(x=>`<li>${esc(x)}</li>`).join("")}</ol></div>`;
+
+VIEWS.meds = () => `${back}<div class="card"><h2>תרופות בנות סיכון (נספח 8)</h2>
+  <ul class="list">${CONFIG.highRiskMeds.main.map(x=>`<li class="ltr" style="text-align:right">${esc(x)}</li>`).join("")}</ul>
+  <h3>High Concentration Electrolytes</h3>
+  <ul class="list">${CONFIG.highRiskMeds.electrolytes.map(x=>`<li class="ltr" style="text-align:right">${esc(x)}</li>`).join("")}</ul></div>
+  <div class="banner err">${CONFIG.highRiskMeds.notes.map(esc).join("<br>")}</div>`;
+
+VIEWS.hands = () => `${back}<div class="card"><h2>5 הרגעים להיגיינת ידיים</h2><ol class="plain">${CONFIG.fiveMoments.map(x=>`<li>${esc(x)}</li>`).join("")}</ol></div>
+  <div class="card"><h3 style="margin-top:0">ספטול או מים וסבון?</h3><ul class="plain" style="padding-inline-start:20px;margin:0">${CONFIG.handNotes.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`;
+
+VIEWS.isbar = () => `${back}<div class="card"><h2>ISBAR</h2><ul class="list">${CONFIG.isbar.map(([l,t,d])=>`<li><div class="row" style="justify-content:flex-start"><span class="pill" style="min-width:28px;text-align:center">${l}</span><b class="ltr">${esc(t)}</b></div><div class="small muted" style="margin-top:4px">${esc(d)}</div></li>`).join("")}</ul>
+  <h3>READ BACK</h3><div class="small">בקבלת הוראה בעל פה או דיווח טלפוני — לרשום, להקריא בחזרה ולקבל אישור מהמוסר.</div></div>`;
+
+VIEWS.incident = () => `${back}<div class="card"><h2>אירוע חריג (נספחים 5–6)</h2><div class="small muted">${esc(CONFIG.incident.examples)}</div>
+  <h3>דיווח</h3><ol class="plain">${CONFIG.incident.report.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>
+  <h3>מה כולל הדו"ח (נספח 6)</h3><ul class="plain" style="padding-inline-start:20px;margin:0">${CONFIG.incident.reportFields.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+  <div class="btns" style="margin-top:12px"><a class="btn" href="tel:0527360561">חיוג למילה פרדקין</a></div></div>
+  <div class="banner warn">הטרדה מינית — על פי חוק אסורה בהחלט. בחשד: לדווח מיד למילה פרדקין או לד"ר איתן ברודסקי.</div>`;
+
+VIEWS.procedures = () => `${back}<div class="card"><h2>נהלים קריטיים (נספח 1)</h2><div class="small muted">לקרוא ולחתום לפני תחילת ההתנסות.</div><ol class="plain" style="margin-top:8px">${CONFIG.criticalProcedures.map(x=>`<li>${esc(x)}</li>`).join("")}</ol></div>`;
+
+VIEWS.expect = () => {
+  const items = CONFIG.expectations.map((x,i)=>{
+    const e = STATE.expectations[i]||{};
+    return `<li><label class="chk" style="align-items:flex-start"><input type="checkbox" data-act="expToggle" data-i="${i}" ${e.date?"checked":""} style="margin-top:2px"><span>${esc(x)}${e.date?`<div class="small muted">בוצע ${fmtDate(e.date)}</div>`:""}</span></label></li>`;
+  }).join("");
+  return `${back}<div class="card"><h2>תיאום ציפיות (נספח 11)</h2><div class="small muted">סימון = "בוצע" עם תאריך היום.</div><ul class="list">${items}</ul>
+  <label class="f">הערות מהשיחה</label><textarea id="expNotes">${esc((STATE.expectations.notes)||"")}</textarea></div>`;
+};
+
+VIEWS.backup = () => {
+  const s = stats();
+  return `${back}<div class="card"><h2>גיבוי לקובץ</h2>
+  <div class="small muted">הנתונים נשמרים אוטומטית בטלפון. קובץ גיבוי מגן מפני ניקוי דפדפן או החלפת מכשיר.</div>
+  <div class="small" style="margin:8px 0">גיבוי אחרון לקובץ: <b>${STATE.meta.lastFileSave? new Date(STATE.meta.lastFileSave).toLocaleString("he-IL") : "אף פעם"}</b></div>
+  <div class="btns"><button class="btn" data-act="exportFile">שמור לקובץ</button><button class="btn sec" data-act="importPick">פתח קובץ</button></div></div>
+  <div id="importPreview"></div>
+  <div class="card small muted">כרגע במכשיר: ${STATE.attendance.length} רשומות יומן · ${Object.values(STATE.skills).filter(x=>x&&x.level).length} מיומנויות · ${num(s.total)} שעות.</div>`;
+};
+
+VIEWS.settings = () => {
+  const st = STATE.student;
+  const f = (k,l)=>`<label class="f">${l}</label><input type="text" data-student="${k}" value="${esc(st[k])}">`;
+  return `${back}<div class="card"><h2>פרטי סטודנט/ית</h2><div class="small muted">משמשים בתצוגות ההדפסה בלבד.</div>
+    ${f("name","שם")}${f("track","מסלול")}${f("ward","מחלקה")}${f("institution","מוסד רפואי")}${f("instructor","מדריך/ה קליני/ת")}</div>
+    <div class="card"><h2>מחיקת כל הנתונים</h2><div class="small muted">מוחק את היומן, המיומנויות ותיאום הציפיות מהמכשיר. מומלץ לשמור קובץ גיבוי לפני.</div>
+    <button class="btn danger" style="margin-top:10px" data-act="wipe">מחיקת כל הנתונים</button></div>
+    <div class="small muted" style="text-align:center">גרסה: שלב 1 · schema ${SCHEMA_VERSION} · ללא שליחת נתונים</div>`;
+};
+
+/* ---------- Print views ---------- */
+function printHeader(title){
+  const st=STATE.student;
+  return `<div class="no-print btns" style="margin-bottom:12px"><button class="btn" data-act="print">הדפסה / שמירה כ-PDF</button><button class="btn ghost" data-act="goBack">חזרה</button></div>
+  <h2 style="text-align:center">${esc(title)}</h2>
+  <div class="small" style="display:flex;flex-wrap:wrap;gap:4px 18px;justify-content:center;margin-bottom:10px">
+  <span>שם הסטודנט/ית: <b>${esc(st.name)||"________"}</b></span><span>מסלול: <b>${esc(st.track)||"________"}</b></span>
+  <span>מחלקה: <b>${esc(st.ward)||"________"}</b></span><span>מוסד רפואי: <b>${esc(st.institution)||"________"}</b></span></div>`;
+}
+function signBlock(){ return `<table class="pt" style="margin-top:24px"><tr><th>חתימת המדריך/ה הקליני/ת</th><th style="width:35%">תאריך</th></tr><tr><td style="height:48px"></td><td></td></tr></table>`; }
+
+VIEWS["print-hours"] = () => {
+  const rows = STATE.attendance.filter(a=>a.status!=="absent").sort((a,b)=>a.date.localeCompare(b.date));
+  let html = printHeader("נספח 4 — טופס דיווח שעות בהתנסות הקלינית");
+  const n = Math.max(6, Math.ceil(rows.length/4));
+  for(let r=0;r<n;r++){
+    const cells = [0,1,2,3].map(i=>rows[r*4+i]);
+    html += `<table class="pt"><tr><th style="width:20%"></th>${cells.map(()=>`<th>יום</th>`).join("")}</tr>
+      <tr><td class="r"><b>תאריך:</b></td>${cells.map(c=>`<td>${c? fmtDate(c.date)+(c.type==="sim"?" (סימ')":"")+(c.status==="makeup"?" (השלמה)":""):""}</td>`).join("")}</tr>
+      <tr><td class="r"><b>שעות:</b></td>${cells.map(c=>`<td>${c? num(c.hours):""}</td>`).join("")}</tr></table>`;
+  }
+  const s=stats();
+  html += `<div class="small" style="margin-top:8px">סה"כ: ${num(s.total)} ש' (שדה ${num(s.field)}, סימולציה ${num(s.sim)})</div>`;
+  return html + signBlock();
+};
+
+VIEWS["print-skills"] = () => {
+  let html = printHeader("נספח 10 — דף תרגול מיומנויות קליניות");
+  const lvLabel = Object.fromEntries(CONFIG.skillLevels.map(l=>[l.key,l.label]));
+  CONFIG.skillCats.forEach(cat=>{
+    html += `<table class="pt"><tr><th class="r" colspan="1" style="text-align:right">${esc(cat.name)}</th><th style="width:22%">ביצוע</th><th style="width:16%">תאריך</th></tr>`;
+    cat.items.forEach(l=>{ const st=STATE.skills[skillKey(cat.key,l)]||{};
+      html += `<tr><td class="r">${esc(l)}</td><td>${st.level?lvLabel[st.level]:""}</td><td>${st.level?fmtDate(st.date):""}</td></tr>`; });
+    html += `</table>`;
+  });
+  return html + signBlock();
+};
+
+/* =====================================================================
+   Router + render
+   ===================================================================== */
+let route = { name:"home", parts:[] };
+function parseHash(){
+  const h = (location.hash||"#home").slice(1).split("/");
+  return { name: VIEWS[h[0]] ? h[0] : "home", parts: h.slice(1) };
+}
+function render(){
+  route = parseHash();
+  if(route.name!=="log" || !(route.parts[0]==="new"||route.parts[0]==="edit")) FORM=null;
+  $("#app").innerHTML = VIEWS[route.name](...route.parts);
+  const tab = TAB_OF[route.name]||route.name;
+  document.querySelectorAll("nav.bottom a").forEach(a=>a.classList.toggle("on", a.dataset.tab===tab));
+  renderSaved();
+}
+function rerenderKeepScroll(){ const y=window.scrollY; render(); window.scrollTo(0,y); }
+function renderSaved(){ $("#saved").textContent = storageOK ? ago(STATE.meta.lastChange) : "⚠ לא נשמר"; }
+window.addEventListener("hashchange", ()=>{ render(); window.scrollTo(0,0); });
+
+/* =====================================================================
+   Actions
+   ===================================================================== */
+const ACTIONS = {
+  quickPresent(){
+    STATE.attendance.push({ id:uid(), date: todayISO(), type:"field", shift:"AM", hours: CONFIG.hours.perDay, status:"present", absenceDocProvided:false, signed:false });
+    commit(); render();
+  },
+  formSet(el){ readFormInputs(); FORM[el.dataset.field]=el.dataset.val; $("#app").innerHTML = renderAttForm(); },
+  formSave(){
+    readFormInputs();
+    if(!FORM.date){ alertMsg("יש לבחור תאריך"); return; }
+    const h = Number(FORM.hours);
+    if(isNaN(h) || h<0 || h>24){ alertMsg("מספר שעות לא תקין"); return; }
+    FORM.hours = h;
+    if(FORM.status!=="absent") FORM.absenceDocProvided=false;
+    if(FORM.id){ const i=STATE.attendance.findIndex(a=>a.id===FORM.id); STATE.attendance[i]=Object.assign({},FORM); }
+    else { FORM.id=uid(); STATE.attendance.push(Object.assign({},FORM)); }
+    commit(); location.hash="#log";
+  },
+  formDelete(){
+    if(!confirm("למחוק את הרשומה מ-"+fmtDate(FORM.date)+"?")) return;
+    STATE.attendance = STATE.attendance.filter(a=>a.id!==FORM.id);
+    commit(); location.hash="#log";
+  },
+  skillFilter(el){ skillFilter=el.dataset.val; rerenderKeepScroll(); },
+  skillLevel(el){
+    const k=el.dataset.key, lv=el.dataset.lv, cur=STATE.skills[k];
+    if(cur && cur.level===lv) delete STATE.skills[k];
+    else STATE.skills[k] = { level: lv, date: todayISO(), note: (cur&&cur.note)||"" };
+    commit();
+    const y=window.scrollY; $("#app").innerHTML = VIEWS.skills(); window.scrollTo(0,y);
+  },
+  expToggle(el){
+    const i=el.dataset.i;
+    if(el.checked) STATE.expectations[i]={date: todayISO()}; else delete STATE.expectations[i];
+    commit(); rerenderKeepScroll();
+  },
+  exportFile(){ exportFile(); },
+  importPick(){ $("#fileIn").value=""; $("#fileIn").click(); },
+  importConfirm(){ doImport(); },
+  importCancel(){ PENDING_IMPORT=null; $("#importPreview").innerHTML=""; },
+  wipe(){
+    if(!confirm("למחוק את כל הנתונים מהמכשיר?")) return;
+    if(!confirm("בטוח? פעולה זו אינה הפיכה (אלא אם שמרת קובץ גיבוי).")) return;
+    STATE = blankState(); persist(); location.hash="#home"; render();
+  },
+  print(){ window.print(); },
+  goBack(){ history.length>1 ? history.back() : (location.hash="#home"); }
+};
+function alertMsg(m){ alert(m); }
+
+document.addEventListener("click", e=>{
+  const el = e.target.closest("[data-act]");
+  if(!el) return;
+  if(el.type==="checkbox") return; // handled on change
+  e.preventDefault();
+  const fn = ACTIONS[el.dataset.act];
+  if(fn) fn(el);
+});
+document.addEventListener("change", e=>{
+  const el=e.target;
+  if(el.dataset && el.dataset.act==="expToggle") ACTIONS.expToggle(el);
+});
+document.addEventListener("input", e=>{
+  const el=e.target;
+  if(el.id==="skillSearch"){ skillQuery=el.value; $("#skillList").innerHTML=skillListHTML(); }
+  else if(el.id==="expNotes"){ STATE.expectations.notes=el.value; commit(); }
+  else if(el.dataset && el.dataset.student){ STATE.student[el.dataset.student]=el.value; commit(); }
+});
+document.addEventListener("toggle", e=>{
+  const d=e.target; if(d.matches && d.matches("details.cat")){ d.open? openCats.add(d.dataset.cat) : openCats.delete(d.dataset.cat); }
+}, true);
+
+/* =====================================================================
+   Backup file
+   ===================================================================== */
+async function exportFile(){
+  const payload = Object.assign({}, STATE, { exportedAt: new Date().toISOString() });
+  const json = JSON.stringify(payload, null, 2);
+  const name = "clinical-backup-"+todayISO()+".json";
+  const blob = new Blob([json], {type:"application/json"});
+  try{
+    const file = new File([blob], name, {type:"application/json"});
+    if(navigator.canShare && navigator.canShare({files:[file]}) && /Android|iPhone|iPad/i.test(navigator.userAgent)){
+      await navigator.share({ files:[file], title: name });
+      markSaved(); return;
+    }
+  }catch(err){
+    if(err && err.name==="AbortError") return;
+    console.error("share failed, falling back to download", err);
+  }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 1000);
+  markSaved();
+}
+function markSaved(){ STATE.meta.lastFileSave=new Date().toISOString(); commit(); if(route.name==="backup") rerenderKeepScroll(); }
+
+let PENDING_IMPORT=null;
+$("#fileIn").addEventListener("change", e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload = ()=>{
+    let data;
+    try{ data=JSON.parse(r.result); }
+    catch(err){ console.error(err); showImportError("הקובץ אינו JSON תקין: "+err.message); return; }
+    if(!data || typeof data!=="object" || !("schemaVersion" in data) || !Array.isArray(data.attendance)){ showImportError("הקובץ אינו קובץ גיבוי של המערכת."); return; }
+    if(data.schemaVersion > SCHEMA_VERSION){ showImportError("הקובץ נוצר בגרסה חדשה יותר של המערכת (schema "+data.schemaVersion+")."); return; }
+    PENDING_IMPORT=data;
+    const att=data.attendance.length, sk=Object.values(data.skills||{}).filter(x=>x&&x.level).length;
+    const when=data.exportedAt? new Date(data.exportedAt).toLocaleString("he-IL") : "לא ידוע";
+    $("#importPreview").innerHTML = `<div class="card"><h2>טעינת גיבוי</h2>
+      <ul class="list small"><li>נשמר: <b>${esc(when)}</b></li><li>רשומות יומן: <b>${att}</b></li><li>מיומנויות מסומנות: <b>${sk}</b></li><li>מטופלים: <b>${(data.patients||[]).length}</b></li><li>סטודנט/ית: <b>${esc((data.student&&data.student.name)||"—")}</b></li></ul>
+      <div class="banner warn" style="margin-top:8px">הטעינה תחליף את כל הנתונים הנוכחיים. עותק של המצב הנוכחי יישמר במכשיר לפני ההחלפה.</div>
+      <div class="btns"><button class="btn" data-act="importConfirm">טען והחלף</button><button class="btn ghost" data-act="importCancel">ביטול</button></div></div>`;
+  };
+  r.onerror = ()=>{ console.error(r.error); showImportError("קריאת הקובץ נכשלה: "+(r.error&&r.error.message)); };
+  r.readAsText(f);
+});
+function showImportError(m){ $("#importPreview").innerHTML=`<div class="banner err">${esc(m)}</div>`; }
+function doImport(){
+  if(!PENDING_IMPORT) return;
+  try{ localStorage.setItem(PREIMPORT_KEY, JSON.stringify(STATE)); }
+  catch(e){ console.error("pre-import copy failed", e); if(!confirm("לא ניתן לשמור עותק של המצב הנוכחי ("+e.message+"). להמשיך בכל זאת?")) return; }
+  const d = Object.assign({}, PENDING_IMPORT); delete d.exportedAt;
+  STATE = migrate(d); PENDING_IMPORT=null; persist();
+  location.hash="#home"; render();
+}
+
+/* ---------- boot ---------- */
+render();
+setInterval(renderSaved, 30000);
+</script>
+</body>
+</html>
