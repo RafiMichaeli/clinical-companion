@@ -4,8 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F3F1EC">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="מלווה התנסות">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>מלווה התנסות קלינית</title>
 <style>
 :root{
@@ -608,9 +612,9 @@ function banners(){
   if(s.duplicates.length) h+=`<div class="banner warn"><b>רשומות כפולות:</b> יותר מרשומה אחת מאותו סוג ב-${s.duplicates.map(fmtDate).join(", ")} — השעות נספרות פעמיים. <a href="#log">ליומן</a></div>`;
   if(s.missingDocs.length) h+=`<div class="banner warn"><b>אחרי היעדרות:</b> להביא אישור היעדרות (${s.missingDocs.map(a=>fmtDate(a.date)).join(", ")}) ולתאם השלמת שעות עם המדריך/ה. <a href="#log">ליומן</a></div>`;
   else if(s.absentDays > s.makeups) h+=`<div class="banner warn">${s.absentDays-s.makeups} ימי היעדרות עדיין ללא השלמה. לתאם עם המדריך/ה.</div>`;
+  if(isIOS() && isStandalone() && !hasData()) h+=`<div class="banner info">כבר רשמת נתונים ב-Safari? הם לא עוברים לאפליקציה אוטומטית — <a href="#backup">טען/י קובץ גיבוי</a>.</div>`;
   const last = STATE.meta.lastFileSave;
-  const hasData = STATE.attendance.length || Object.keys(STATE.skills).length;
-  if(hasData && (!last || (Date.now()-new Date(last).getTime()) > CONFIG.backupReminderDays*86400000)){
+  if(hasData() && (!last || (Date.now()-new Date(last).getTime()) > CONFIG.backupReminderDays*86400000)){
     h+=`<div class="banner info">${last? "לא נשמר קובץ גיבוי ב-"+CONFIG.backupReminderDays+" הימים האחרונים." : "עדיין לא נשמר קובץ גיבוי."} <a href="#backup">שמור גיבוי</a></div>`;
   }
   return h;
@@ -778,7 +782,8 @@ VIEWS.backup = () => {
   return `${back}<div class="card"><h2>גיבוי לקובץ</h2>
   <div class="small muted">הנתונים נשמרים אוטומטית בטלפון. קובץ גיבוי מגן מפני ניקוי דפדפן או החלפת מכשיר.</div>
   <div class="small" style="margin:8px 0">גיבוי אחרון לקובץ: <b>${STATE.meta.lastFileSave? new Date(STATE.meta.lastFileSave).toLocaleString("he-IL") : "אף פעם"}</b></div>
-  <div class="btns"><button class="btn" data-act="exportFile">שמור לקובץ</button><button class="btn sec" data-act="importPick">פתח קובץ</button></div></div>
+  <div class="btns"><button class="btn" data-act="exportFile">שמור לקובץ</button><button class="btn sec" data-act="importPick">פתח קובץ</button></div>
+  ${isIOS() && !isStandalone() && hasData() ? `<div class="banner info" style="margin:10px 0 0">${iosSeparateStorageNote()}</div>` : ""}</div>
   <div id="importPreview"></div>
   ${preimportCard()}
   <div class="card small muted">כרגע במכשיר: ${STATE.attendance.length} רשומות יומן · ${Object.values(STATE.skills).filter(x=>x&&x.level).length} מיומנויות · ${num(s.total)} שעות.</div>`;
@@ -809,6 +814,7 @@ VIEWS.settings = () => {
   const f = (k,l)=>`<label class="f">${l}</label><input type="text" data-student="${k}" value="${esc(st[k])}">`;
   return `${back}<div class="card"><h2>פרטי סטודנט/ית</h2><div class="small muted">משמשים בתצוגות ההדפסה בלבד.</div>
     ${f("name","שם")}${f("track","מסלול")}${f("ward","מחלקה")}${f("institution","מוסד רפואי")}${f("instructor","מדריך/ה קליני/ת")}</div>
+    ${appCardHTML()}
     <div class="card"><h2>מחיקת כל הנתונים</h2><div class="small muted">מוחק את היומן, המיומנויות ותיאום הציפיות מהמכשיר. מומלץ לשמור קובץ גיבוי לפני.</div>
     <button class="btn danger" style="margin-top:10px" data-act="wipe">מחיקת כל הנתונים</button></div>
     <div class="small muted" style="text-align:center">גרסה: שלב 1 · schema ${SCHEMA_VERSION} · ללא שליחת נתונים</div>`;
@@ -1047,7 +1053,62 @@ function doImport(){
   location.hash="#home"; render();
 }
 
+/* =====================================================================
+   Installed app: offline (sw.js), persistent storage, install button
+   ===================================================================== */
+const APP = { sw: "בודק…", persisted: null, installPrompt: null };
+function isStandalone(){ return matchMedia("(display-mode: standalone)").matches || navigator.standalone===true; }
+function isIOS(){ return /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints>1); }
+function hasData(){ return STATE.attendance.length>0 || Object.keys(STATE.skills).length>0; }
+
+function setupApp(){
+  if(!("serviceWorker" in navigator)) APP.sw = "הדפדפן לא תומך";
+  else if(!/^https?:$/.test(location.protocol)) APP.sw = "לא פעיל — הקובץ נפתח ישירות. יש לפתוח דרך GitHub Pages";
+  else{
+    navigator.serviceWorker.register("sw.js")
+      .then(()=>navigator.serviceWorker.ready)
+      .then(()=>{ APP.sw = "פעיל — נפתחת גם בלי רשת"; refreshAppCard(); })
+      .catch(e=>{ console.error("service worker registration failed", e); APP.sw = "לא פעיל: "+e.message; refreshAppCard(); });
+  }
+  if(navigator.storage && navigator.storage.persisted){
+    navigator.storage.persisted()
+      .then(p=> p || (navigator.storage.persist ? navigator.storage.persist() : false))
+      .then(p=>{ APP.persisted = !!p; refreshAppCard(); })
+      .catch(e=>{ console.error("storage.persist failed", e); APP.persisted = false; refreshAppCard(); });
+  }
+  window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); APP.installPrompt = e; refreshAppCard(); });
+  window.addEventListener("appinstalled", ()=>{ APP.installPrompt = null; refreshAppCard(); });
+}
+// Update only the status card, so typing in the settings fields is never interrupted.
+function refreshAppCard(){ const el = $("#appCard"); if(el) el.outerHTML = appCardHTML(); }
+function iosSeparateStorageNote(){
+  return `באייפון, אפליקציה שהותקנה במסך הבית שומרת נתונים בנפרד מ-Safari. כדי להעביר: לשמור כאן קובץ גיבוי, ואז באפליקציה עצמה — עוד ← גיבוי ← פתח קובץ.`;
+}
+function appCardHTML(){
+  const installed = isStandalone();
+  let help = "";
+  if(APP.installPrompt) help = `<button class="btn" style="margin-top:10px" data-act="install">התקנה כאפליקציה</button>`;
+  else if(!installed) help = `<div class="small muted" style="margin-top:8px">${isIOS()
+      ? "התקנה: ב-Safari — כפתור השיתוף ← \"הוסף למסך הבית\"."
+      : "התקנה: בתפריט ⋮ של Chrome ← \"התקנת אפליקציה\" או \"הוספה למסך הבית\"."}</div>`;
+  if(isIOS() && !installed) help += `<div class="banner info" style="margin:8px 0 0">${iosSeparateStorageNote()}</div>`;
+  return `<div class="card" id="appCard"><h2>אפליקציה בטלפון</h2>
+    <ul class="list small">
+      <li>מותקנת כאפליקציה: <b>${installed? "כן" : "לא"}</b></li>
+      <li>עבודה בלי רשת: <b>${esc(APP.sw)}</b></li>
+      <li>אחסון קבוע: <b>${APP.persisted===null ? "לא ידוע" : APP.persisted ? "מאושר — הדפדפן לא ימחק את הנתונים מעצמו" : "לא אושר — חשוב לשמור קבצי גיבוי"}</b></li>
+    </ul>${help}</div>`;
+}
+ACTIONS.install = () => {
+  const ev = APP.installPrompt; if(!ev) return;
+  ev.prompt();
+  ev.userChoice
+    .then(c=>{ if(c.outcome==="accepted") APP.installPrompt = null; refreshAppCard(); })
+    .catch(e=>{ console.error("install prompt failed", e); showError("ההתקנה נכשלה: "+e.message); });
+};
+
 /* ---------- boot ---------- */
+setupApp();
 render();
 setInterval(renderSaved, 30000);
 </script>
