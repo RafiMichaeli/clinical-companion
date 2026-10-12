@@ -2,9 +2,10 @@
    The page itself is network-first: online you always get the latest version
    (and the copy kept for offline is refreshed); offline, or when the network
    takes more than NET_TIMEOUT_MS, the last copy is served.
-   Icons and the manifest are cache-first. Bump CACHE when the file list changes. */
+   Icons and the manifest are cache-first. Bump CACHE when the file list changes
+   or when an icon / the manifest changes (otherwise phones keep the old copy). */
 "use strict";
-const CACHE = "clinical-companion-v1";
+const CACHE = "clinical-companion-v2";
 const NET_TIMEOUT_MS = 4000;
 const PAGE = "./index.html";
 const PRECACHE = [
