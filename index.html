@@ -26,10 +26,10 @@ html,body{margin:0;padding:0}
 body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
 button,input,select,textarea{font:inherit;color:inherit}
 a{color:var(--indigo)}
-header.top{position:sticky;top:0;z-index:5;background:var(--paper);padding:12px 16px 8px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px}
+header.top{position:sticky;top:0;z-index:5;background:var(--paper);padding:calc(12px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px}
 header.top h1{font-size:18px;margin:0;font-weight:700}
 header.top .saved{font-size:12px;color:var(--muted);white-space:nowrap}
-main{padding:12px 16px calc(var(--nav-h) + 24px);max-width:640px;margin:0 auto}
+main{padding:12px max(16px, env(safe-area-inset-right)) calc(var(--nav-h) + 24px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));max-width:640px;margin:0 auto}
 nav.bottom{position:fixed;bottom:0;left:0;right:0;height:calc(var(--nav-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:var(--card);border-top:1px solid var(--line);display:flex;z-index:10}
 nav.bottom a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-decoration:none;color:var(--muted);font-size:13px;gap:2px}
 nav.bottom a .ic{font-size:20px;line-height:1}
@@ -127,10 +127,10 @@ table.pt td.r{text-align:right}
 <div id="err" class="banner err" role="alert" hidden style="margin:12px 16px 0"></div>
 <main id="app"></main>
 <nav class="bottom" id="nav">
-  <a href="#home" data-tab="home"><span class="ic">⌂</span>בית</a>
-  <a href="#skills" data-tab="skills"><span class="ic">✓</span>מיומנויות</a>
-  <a href="#log" data-tab="log"><span class="ic">▤</span>יומן</a>
-  <a href="#more" data-tab="more"><span class="ic">⋯</span>עוד</a>
+  <a href="#home" data-tab="home"><span class="ic" aria-hidden="true">⌂</span>בית</a>
+  <a href="#skills" data-tab="skills"><span class="ic" aria-hidden="true">✓</span>מיומנויות</a>
+  <a href="#log" data-tab="log"><span class="ic" aria-hidden="true">▤</span>יומן</a>
+  <a href="#more" data-tab="more"><span class="ic" aria-hidden="true">⋯</span>עוד</a>
 </nav>
 <input type="file" id="fileIn" accept="application/json,.json" hidden>
 
@@ -596,7 +596,9 @@ VIEWS.home = () => {
   if(todayEntry){
     html += `<div class="card"><div class="row"><span>היום נרשם: <b>${esc(statusLabel(todayEntry.status))}</b> · ${esc(CONFIG.shiftShort[todayEntry.shift])} · ${num(todayEntry.hours)} ש'</span><a class="btn small sec" href="#log/edit/${todayEntry.id}">עריכה</a></div></div>`;
   } else {
-    html += `<button class="btn" data-act="quickPresent">✓ נוכח/ת היום · בוקר · ${CONFIG.hours.perDay} ש'</button>
+    const qs = lastShift();
+    html += `<div class="seg" role="group" aria-label="משמרת" style="margin-bottom:8px">${Object.keys(CONFIG.shiftShort).map(k=>`<button type="button" data-act="quickShift" data-val="${k}" class="${qs===k?"on":""}" aria-pressed="${qs===k}">${CONFIG.shiftShort[k]}</button>`).join("")}</div>
+    <button class="btn" data-act="quickPresent">✓ נוכח/ת היום · ${CONFIG.shiftShort[qs]} · ${CONFIG.hours.perDay} ש'</button>
     <div style="text-align:center;margin-top:8px"><a href="#log/new" class="small">רשומה אחרת (סימולציה / משמרת אחרת / היעדרות)</a></div>`;
   }
   return html;
@@ -620,6 +622,8 @@ function banners(){
   return h;
 }
 
+// The shift last used for a present day — default for quick-present and new entries.
+function lastShift(){ return CONFIG.shifts[STATE.meta.lastShift] ? STATE.meta.lastShift : "AM"; }
 function statusLabel(s){ return {present:"נוכח/ת", absent:"נעדר/ת", makeup:"השלמה"}[s]||s; }
 function typeLabel(t){ return t==="sim"?"סימולציה":"שדה"; }
 
@@ -650,12 +654,12 @@ VIEWS.log = (sub, id) => {
 
 let FORM = null;
 function attForm(existing){
-  FORM = existing ? Object.assign({}, existing) : { id:null, date: todayISO(), type:"field", shift:"AM", hours: CONFIG.hours.perDay, status:"present", absenceDocProvided:false, signed:false };
+  FORM = existing ? Object.assign({}, existing) : { id:null, date: todayISO(), type:"field", shift: lastShift(), hours: CONFIG.hours.perDay, status:"present", absenceDocProvided:false, signed:false };
   return renderAttForm();
 }
 function renderAttForm(){
   const f = FORM;
-  const seg = (field, opts) => `<div class="seg">${opts.map(([v,l])=>`<button type="button" data-act="formSet" data-field="${field}" data-val="${v}" class="${String(f[field])===String(v)?"on":""}">${l}</button>`).join("")}</div>`;
+  const seg = (field, opts) => `<div class="seg">${opts.map(([v,l])=>`<button type="button" data-act="formSet" data-field="${field}" data-val="${v}" class="${String(f[field])===String(v)?"on":""}" aria-pressed="${String(f[field])===String(v)}">${l}</button>`).join("")}</div>`;
   return `<a class="back" href="#log">→ חזרה ליומן</a>
   <div class="card" id="attForm">
     <h2>${f.id? "עריכת רשומה":"רשומה חדשה"}</h2>
@@ -679,47 +683,66 @@ function readFormInputs(){
 let skillFilter = "all", skillQuery = "", openCats = new Set();
 VIEWS.skills = () => {
   const sk = allSkillStats();
-  return `<div class="card"><div class="row"><h2 style="margin:0">פנקס מיומנויות</h2><b>${pct(sk.done,sk.total)}%</b></div>
-    <div class="bar sage"><span style="width:${pct(sk.done,sk.total)}%"></span></div>
-    <div class="small muted">${sk.done}/${sk.total} · לחיצה על רמה מסמנת אותה עם תאריך; לחיצה נוספת מבטלת.</div>
+  return `<div class="card"><div class="row"><h2 style="margin:0">פנקס מיומנויות</h2><b id="skPct">${pct(sk.done,sk.total)}%</b></div>
+    <div class="bar sage"><span id="skBar" style="width:${pct(sk.done,sk.total)}%"></span></div>
+    <div class="small muted"><span id="skCount">${sk.done}/${sk.total}</span> · לחיצה על רמה מסמנת אותה עם תאריך; לחיצה נוספת מבטלת.</div>
     <div class="small" style="margin-top:6px"><span class="dot" style="background:var(--indigo-light)"></span> נצפה &nbsp; <span class="dot" style="background:var(--indigo)"></span> בהדרכה &nbsp; <span class="dot" style="background:var(--sage)"></span> בפיקוח</div>
   </div>
   <input type="search" id="skillSearch" placeholder="🔍 חיפוש מיומנות" value="${esc(skillQuery)}">
   <div class="chips">
-    ${[["all","הכל"],["todo","לא בוצעו עדיין"],["done","סומנו"]].map(([k,l])=>`<button data-act="skillFilter" data-val="${k}" class="${skillFilter===k?"on":""}">${l}</button>`).join("")}
+    ${[["all","הכל"],["todo","לא בוצעו עדיין"],["done","סומנו"]].map(([k,l])=>`<button data-act="skillFilter" data-val="${k}" class="${skillFilter===k?"on":""}" aria-pressed="${skillFilter===k}">${l}</button>`).join("")}
     <a class="btn small sec" href="#print-skills" style="margin-inline-start:auto">הדפסה לחתימה</a>
   </div>
   <div id="skillList">${skillListHTML()}</div>`;
 };
 function skillListHTML(){
-  const q = skillQuery.trim();
+  const q = skillQuery.trim().toLowerCase();
   let html="", any=false;
   CONFIG.skillCats.forEach(cat=>{
+    const catMatch = q && cat.name.toLowerCase().includes(q);
     const items = cat.items.filter(l=>{
       const st = STATE.skills[skillKey(cat.key,l)];
       if(skillFilter==="todo" && st && st.level) return false;
       if(skillFilter==="done" && !(st && st.level)) return false;
-      if(q && !l.includes(q) && !cat.name.includes(q)) return false;
+      if(q && !catMatch && !l.toLowerCase().includes(q)) return false;
       return true;
     });
     if(!items.length) return;
     any=true;
-    const s = skillStats(cat);
     const open = q || openCats.has(cat.key);
-    html += `<details class="cat" data-cat="${cat.key}" ${open?"open":""}><summary>
-      <div class="row"><b>${esc(cat.name)}</b><span class="small muted">${s.done}/${s.total}</span></div>
-      <div class="bar sage" style="height:6px;margin-bottom:0"><span style="width:${pct(s.done,s.total)}%"></span></div></summary>`;
-    items.forEach(l=>{
-      const k = skillKey(cat.key,l), st = STATE.skills[k]||{};
-      html += `<div class="skill"><div class="name">${esc(l)}</div>
-        <div class="lv">${CONFIG.skillLevels.map(lv=>`<button data-act="skillLevel" data-key="${esc(k)}" data-lv="${lv.key}" class="${st.level===lv.key?"on":""}">${lv.label}</button>`).join("")}</div>
-        ${st.level? `<div class="small muted" style="margin-top:4px">${fmtDate(st.date)}</div>`:""}
-      </div>`;
-    });
+    html += `<details class="cat" data-cat="${cat.key}" ${open?"open":""}><summary>${catSummaryInner(cat)}</summary>`;
+    items.forEach(l=>{ html += skillRowHTML(cat, l); });
     html += `</details>`;
   });
   if(!any) html = `<div class="empty">אין מיומנויות שמתאימות לסינון.</div>`;
   return html;
+}
+function catSummaryInner(cat){
+  const s = skillStats(cat);
+  return `<div class="row"><b>${esc(cat.name)}</b><span class="small muted">${s.done}/${s.total}</span></div>
+      <div class="bar sage" style="height:6px;margin-bottom:0"><span style="width:${pct(s.done,s.total)}%"></span></div>`;
+}
+function skillRowHTML(cat, l){
+  const k = skillKey(cat.key,l), st = STATE.skills[k]||{};
+  return `<div class="skill"><div class="name">${esc(l)}</div>
+        <div class="lv" role="group" aria-label="${esc(l)}">${CONFIG.skillLevels.map(lv=>`<button data-act="skillLevel" data-key="${esc(k)}" data-lv="${lv.key}" class="${st.level===lv.key?"on":""}" aria-pressed="${st.level===lv.key}">${lv.label}</button>`).join("")}</div>
+        ${st.level? `<div class="small muted" style="margin-top:4px">${fmtDate(st.date)}</div>`:""}
+      </div>`;
+}
+// After a level tap: redraw only that row, its category header and the totals —
+// keeps scroll position, the search box focus and the phone keyboard as they were.
+function updateSkillRow(btn, catKey, label){
+  const cat = CONFIG.skillCats.find(c=>c.key===catKey);
+  if(!cat) return false;
+  const row = btn.closest(".skill"), sum = document.querySelector(`details.cat[data-cat="${catKey}"] > summary`);
+  if(!row || !sum) return false;
+  row.outerHTML = skillRowHTML(cat, label);
+  sum.innerHTML = catSummaryInner(cat);
+  const sk = allSkillStats();
+  $("#skPct").textContent = pct(sk.done,sk.total)+"%";
+  $("#skBar").style.width = pct(sk.done,sk.total)+"%";
+  $("#skCount").textContent = sk.done+"/"+sk.total;
+  return true;
 }
 
 /* ---------- More ---------- */
@@ -878,7 +901,11 @@ function render(){
       <div class="btns"><button class="btn" data-act="exportFile">שמור קובץ גיבוי</button><a class="btn sec" href="#home">למסך הבית</a></div>`;
   }
   const tab = TAB_OF[route.name]||route.name;
-  document.querySelectorAll("nav.bottom a").forEach(a=>a.classList.toggle("on", a.dataset.tab===tab));
+  document.querySelectorAll("nav.bottom a").forEach(a=>{
+    const on = a.dataset.tab===tab;
+    a.classList.toggle("on", on);
+    if(on) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current");
+  });
   renderSaved();
 }
 function rerenderKeepScroll(){ const y=window.scrollY; render(); window.scrollTo(0,y); }
@@ -890,9 +917,10 @@ window.addEventListener("hashchange", ()=>{ render(); window.scrollTo(0,0); });
    ===================================================================== */
 const ACTIONS = {
   quickPresent(){
-    STATE.attendance.push({ id:uid(), date: todayISO(), type:"field", shift:"AM", hours: CONFIG.hours.perDay, status:"present", absenceDocProvided:false, signed:false });
+    STATE.attendance.push({ id:uid(), date: todayISO(), type:"field", shift: lastShift(), hours: CONFIG.hours.perDay, status:"present", absenceDocProvided:false, signed:false });
     commit(); render();
   },
+  quickShift(el){ if(CONFIG.shifts[el.dataset.val]){ STATE.meta.lastShift = el.dataset.val; commit(); rerenderKeepScroll(); } },
   formSet(el){ readFormInputs(); FORM[el.dataset.field]=el.dataset.val; $("#app").innerHTML = renderAttForm(); },
   formSave(){
     readFormInputs();
@@ -906,6 +934,7 @@ const ACTIONS = {
     if(FORM.status!=="absent") FORM.absenceDocProvided=false;
     const dup = findDuplicate(FORM);
     if(dup && !confirm("כבר קיימת רשומת "+typeLabel(FORM.type)+" ב-"+fmtDate(FORM.date)+" ("+statusLabel(dup.status)+", "+num(dup.hours)+" ש'). שמירה תיצור רשומה כפולה והשעות ייספרו פעמיים. לשמור בכל זאת?")) return;
+    if(FORM.status!=="absent" && FORM.type==="field") STATE.meta.lastShift = FORM.shift;
     if(FORM.id){ const i=STATE.attendance.findIndex(a=>a.id===FORM.id); STATE.attendance[i]=Object.assign({},FORM); }
     else { FORM.id=uid(); STATE.attendance.push(Object.assign({},FORM)); }
     commit(); location.hash="#log";
@@ -921,7 +950,8 @@ const ACTIONS = {
     if(cur && cur.level===lv) delete STATE.skills[k];
     else STATE.skills[k] = { level: lv, date: todayISO(), note: (cur&&cur.note)||"" };
     commit();
-    const y=window.scrollY; $("#app").innerHTML = VIEWS.skills(); window.scrollTo(0,y);
+    const catKey = k.split("|")[0];
+    if(!updateSkillRow(el, catKey, k.slice(catKey.length+1))) rerenderKeepScroll();
   },
   expToggle(el){
     const i=el.dataset.i;
@@ -986,7 +1016,8 @@ document.addEventListener("input", e=>{
   else if(el.dataset && el.dataset.student){ STATE.student[el.dataset.student]=el.value; commit(); }
 });
 document.addEventListener("toggle", e=>{
-  const d=e.target; if(d.matches && d.matches("details.cat")){ d.open? openCats.add(d.dataset.cat) : openCats.delete(d.dataset.cat); }
+  // Only remember categories the user opened/closed by hand — not the ones a search opened.
+  const d=e.target; if(d.matches && d.matches("details.cat") && !skillQuery.trim()){ d.open? openCats.add(d.dataset.cat) : openCats.delete(d.dataset.cat); }
 }, true);
 
 /* =====================================================================
@@ -999,7 +1030,10 @@ async function exportFile(){
   const blob = new Blob([json], {type:"application/json"});
   try{
     const file = new File([blob], name, {type:"application/json"});
-    if(navigator.canShare && navigator.canShare({files:[file]}) && /Android|iPhone|iPad/i.test(navigator.userAgent)){
+    // Phones and tablets get the share sheet (Drive/Files/WhatsApp); desktops download.
+    // iPadOS reports itself as a Mac, so check for a touch screen instead of the user agent.
+    const touchDevice = isIOS() || /Android/i.test(navigator.userAgent) || matchMedia("(pointer: coarse)").matches;
+    if(navigator.canShare && navigator.canShare({files:[file]}) && touchDevice){
       await navigator.share({ files:[file], title: name });
       markSaved(); return;
     }
