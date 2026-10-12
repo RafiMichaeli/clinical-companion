@@ -120,6 +120,7 @@ table.pt td.r{text-align:right}
   <h1 id="title">מלווה התנסות</h1>
   <span class="saved" id="saved"></span>
 </header>
+<div id="err" class="banner err" role="alert" hidden style="margin:12px 16px 0"></div>
 <main id="app"></main>
 <nav class="bottom" id="nav">
   <a href="#home" data-tab="home"><span class="ic">⌂</span>בית</a>
@@ -137,8 +138,8 @@ table.pt td.r{text-align:right}
 const CONFIG = {
   course: "סיעוד המבוגר א' · הסבה ט'",
   institution: 'המרכז הרפואי ת"א',
-  dates: { start: "2026-10-04", end: "2026-11-14", formsDue: "2026-11-28" },
-  hours: { field: 144, sim: 24, total: 168, perDay: 8, totalDays: 21 },
+  dates: { start: "2026-10-04", end: "2026-11-14", formsDue: "2026-11-28", entryMin: "2026-09-01", entryMax: "2026-12-31" },
+  hours: { field: 144, sim: 24, total: 168, perDay: 8, totalDays: 21, maxPerEntry: 12 },
   absence: { limitPct: 0.20, yellowFromDays: 2, redFromDays: 4 },
   backupReminderDays: 3,
   shifts: { AM: "בוקר 07:00–15:00", PM: "ערב 15:00–23:00", NIGHT: "לילה 23:00–07:00" },
@@ -346,7 +347,10 @@ const CONFIG = {
    ===================================================================== */
 const STORE_KEY = "clinical.v1";
 const PREIMPORT_KEY = "clinical.preimport";
+const RAW_COPY_KEY = "clinical.unreadable";   // copy of stored data that could not be read as-is
 const SCHEMA_VERSION = 1;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const STATUSES = ["present","absent","makeup"];
 
 function blankState(){
   return {
@@ -361,31 +365,96 @@ function blankState(){
 }
 
 let storageOK = true;
+let storageError = "";   // message shown in the banner when saving fails
+let loadProblem = null;  // { msg, rawCopied } when stored data could not be read as-is
 let STATE = load();
 
 function load(){
+  let raw = null;
+  try{ raw = localStorage.getItem(STORE_KEY); }
+  catch(e){
+    console.error("load failed: localStorage unavailable", e);
+    storageOK = false; storageError = e.message;
+    return blankState();
+  }
+  if(!raw) return blankState();
   try{
-    const raw = localStorage.getItem(STORE_KEY);
-    if(!raw) return blankState();
-    return migrate(JSON.parse(raw));
+    const report = { dropped: 0 };
+    const s = migrate(JSON.parse(raw), report);
+    if(report.dropped) keepRawCopy(raw, report.dropped+" רשומות לא תקינות לא נטענו");
+    return s;
   }catch(e){
-    console.error("load failed", e);
-    storageOK = false;
+    console.error("load failed: stored data unreadable", e);
+    keepRawCopy(raw, "הנתונים השמורים לא נקראו ("+e.message+")");
     return blankState();
   }
 }
-function migrate(s){
+// Before anything can overwrite unreadable data, keep the original string aside.
+function keepRawCopy(raw, msg){
+  let rawCopied = false;
+  try{ localStorage.setItem(RAW_COPY_KEY, raw); rawCopied = true; }
+  catch(e){ console.error("could not keep a copy of the unreadable data", e); }
+  loadProblem = { msg, rawCopied, raw };
+}
+
+// Normalizes any stored or imported object into a valid state.
+// Entries that cannot be repaired are dropped and counted in report.dropped.
+function migrate(s, report){
+  report = report || { dropped: 0 };
+  if(!s || typeof s!=="object" || Array.isArray(s)) throw new Error("המבנה אינו אובייקט נתונים");
   // schemaVersion 1 is the first version; future migrations go here.
-  const b = blankState();
-  const out = Object.assign(b, s);
-  out.student = Object.assign(blankState().student, s.student||{});
-  out.meta = Object.assign(blankState().meta, s.meta||{});
-  out.attendance = Array.isArray(s.attendance) ? s.attendance : [];
-  out.skills = s.skills && typeof s.skills==="object" ? s.skills : {};
-  out.expectations = s.expectations && typeof s.expectations==="object" ? s.expectations : {};
+  const out = Object.assign(blankState(), s);
+  const student = s.student && typeof s.student==="object" ? s.student : {};
+  out.student = blankState().student;
+  Object.keys(out.student).forEach(k=>{ if(student[k]!=null) out.student[k] = String(student[k]); });
+  out.meta = Object.assign(blankState().meta, s.meta && typeof s.meta==="object" ? s.meta : {});
+  out.attendance = cleanAttendance(Array.isArray(s.attendance) ? s.attendance : [], report);
+  out.skills = cleanSkills(s.skills, report);
+  out.expectations = cleanExpectations(s.expectations);
+  out.patients = Array.isArray(s.patients) ? s.patients : [];
   out.schemaVersion = SCHEMA_VERSION;
   return out;
 }
+function cleanAttendance(list, report){
+  const ids = new Set(), out = [];
+  list.forEach(a=>{
+    if(!a || typeof a!=="object" || !DATE_RE.test(a.date)){ report.dropped++; return; }
+    let id = typeof a.id==="string" && /^[a-z0-9]{4,32}$/i.test(a.id) && !ids.has(a.id) ? a.id : uid();
+    ids.add(id);
+    const h = Number(a.hours);
+    out.push(Object.assign({}, a, {
+      id,
+      type: a.type==="sim" ? "sim" : "field",
+      shift: CONFIG.shifts[a.shift] ? a.shift : "AM",
+      hours: Number.isFinite(h) && h>=0 && h<=24 ? h : CONFIG.hours.perDay,
+      status: STATUSES.includes(a.status) ? a.status : "present",
+      absenceDocProvided: !!a.absenceDocProvided,
+      signed: !!a.signed
+    }));
+  });
+  return out;
+}
+function cleanSkills(skills, report){
+  const out = {};
+  if(!skills || typeof skills!=="object" || Array.isArray(skills)) return out;
+  const levels = CONFIG.skillLevels.map(l=>l.key);
+  Object.keys(skills).forEach(k=>{
+    const v = skills[k];
+    if(!v || !levels.includes(v.level) || !DATE_RE.test(v.date)){ report.dropped++; return; }
+    out[k] = { level: v.level, date: v.date, note: typeof v.note==="string" ? v.note : "" };
+  });
+  return out;
+}
+function cleanExpectations(ex){
+  const out = {};
+  if(!ex || typeof ex!=="object" || Array.isArray(ex)) return out;
+  Object.keys(ex).forEach(k=>{
+    if(k==="notes"){ if(typeof ex.notes==="string") out.notes = ex.notes; }
+    else if(/^\d+$/.test(k) && ex[k] && DATE_RE.test(ex[k].date)) out[k] = { date: ex[k].date };
+  });
+  return out;
+}
+
 let saveTimer = null;
 function commit(){
   STATE.meta.lastChange = new Date().toISOString();
@@ -393,15 +462,20 @@ function commit(){
   saveTimer = setTimeout(persist, 300);
 }
 function persist(){
+  clearTimeout(saveTimer); saveTimer = null;
   try{
     localStorage.setItem(STORE_KEY, JSON.stringify(STATE));
-    storageOK = true;
+    storageOK = true; storageError = "";
   }catch(e){
     console.error("save failed", e);
-    storageOK = false;
+    storageOK = false; storageError = e.message;
   }
   renderSaved();
 }
+// Save immediately when the app is hidden or closed, so the last tap is never lost.
+function flushSave(){ if(saveTimer) persist(); }
+window.addEventListener("pagehide", flushSave);
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") flushSave(); });
 
 /* =====================================================================
    Utils
@@ -410,7 +484,7 @@ const $ = s => document.querySelector(s);
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function parseISO(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
-function fmtDate(s){ if(!s) return ""; const [y,m,d]=s.split("-"); return d+"."+m+"."+y.slice(2); }
+function fmtDate(s){ if(!s) return ""; if(!DATE_RE.test(s)) return esc(s); const [y,m,d]=s.split("-"); return d+"."+m+"."+y.slice(2); }
 function dayName(s){ return ["א'","ב'","ג'","ד'","ה'","ו'","ש'"][parseISO(s).getDay()]; }
 function daysBetween(a,b){ return Math.round((parseISO(b)-parseISO(a))/86400000); }
 function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
@@ -429,8 +503,9 @@ function ago(iso){
 /* =====================================================================
    Derived numbers
    ===================================================================== */
-function stats(){
-  const att = STATE.attendance;
+function stats(st){
+  st = st || STATE;
+  const att = st.attendance;
   let field=0, sim=0, absentDays=0, absentHours=0, makeups=0, daysDone=new Set();
   const missingDocs=[];
   att.forEach(a=>{
@@ -445,7 +520,16 @@ function stats(){
     }
   });
   const limitHours = CONFIG.hours.total*CONFIG.absence.limitPct;
-  return { field, sim, total: field+sim, absentDays, absentHours, makeups, days: daysDone.size, missingDocs, limitHours };
+  return { field, sim, total: field+sim, absentDays, absentHours, makeups, days: daysDone.size, missingDocs, limitHours, duplicates: duplicateDays(att) };
+}
+// Dates with more than one entry of the same type (field/sim) — usually a double tap or a copy.
+function duplicateDays(att){
+  const seen = {}, dup = new Set();
+  att.forEach(a=>{ const k=a.date+"|"+a.type; if(seen[k]) dup.add(a.date); seen[k]=true; });
+  return Array.from(dup).sort();
+}
+function findDuplicate(entry){
+  return STATE.attendance.find(a=>a.id!==entry.id && a.date===entry.date && a.type===entry.type);
 }
 function practicumPhase(dateISO){
   const {start,end} = CONFIG.dates;
@@ -453,7 +537,9 @@ function practicumPhase(dateISO){
   if(dateISO > end) return { state:"after", week: Math.ceil((daysBetween(start,end)+1)/7) };
   return { state:"during", week: Math.floor(daysBetween(start,dateISO)/7)+1 };
 }
-function absenceLevel(days){
+function absenceLevel(s){
+  const days = s.absentDays;
+  if(s.absentHours > s.limitHours) return "over";
   if(days>=CONFIG.absence.redFromDays) return "red";
   if(days>=CONFIG.absence.yellowFromDays) return "amber";
   return "green";
@@ -476,8 +562,9 @@ const TAB_OF = { home:"home", skills:"skills", log:"log", more:"more", aids:"mor
 VIEWS.home = () => {
   const t = todayISO(), ph = practicumPhase(t), s = stats(), sk = allSkillStats();
   const todayEntry = STATE.attendance.find(a=>a.date===t);
-  const lvl = absenceLevel(s.absentDays);
-  const lvlText = {green:"תקין", amber:"שים/י לב", red:"קרוב לסף 20%"}[lvl];
+  const lvl = absenceLevel(s);
+  const lvlText = {green:"תקין", amber:"שים/י לב", red:"קרוב לסף 20%", over:"מעל סף 20%"}[lvl];
+  const lvlClass = lvl==="over" ? "red" : lvl;
   let phaseLine;
   if(ph.state==="before") phaseLine = "ההתנסות מתחילה ב-"+fmtDate(CONFIG.dates.start);
   else if(ph.state==="after") phaseLine = "ההתנסות הסתיימה · הגשת טפסים עד "+fmtDate(CONFIG.dates.formsDue);
@@ -493,8 +580,9 @@ VIEWS.home = () => {
     <div class="row small muted"><span>שדה ${num(s.field)}/${CONFIG.hours.field}</span><span>סימולציה ${num(s.sim)}/${CONFIG.hours.sim}</span></div>
   </div>`;
   html += `<div class="card">
-    <div class="row"><h2 style="margin:0">היעדרות</h2><span class="pill ${lvl}"><span class="dot" style="background:currentColor"></span> ${s.absentDays===1?'יום 1':s.absentDays+' ימים'} · ${lvlText}</span></div>
+    <div class="row"><h2 style="margin:0">היעדרות</h2><span class="pill ${lvlClass}"><span class="dot" style="background:currentColor"></span> ${s.absentDays===1?'יום 1':s.absentDays+' ימים'} · ${lvlText}</span></div>
     <div class="small muted" style="margin-top:6px">${num(s.absentHours)} ש' מתוך סף ${num(s.limitHours)} ש' (20% מ-${CONFIG.hours.total}). מעל הסף = חזרה על ההתנסות, גם אם ההיעדרות מוצדקת.</div>
+    ${lvl==="over" ? `<div class="banner err" style="margin:8px 0 0">שעות ההיעדרות עברו את הסף. לפנות למדריך/ה ולמרכזת התחום בהקדם.</div>` : ""}
   </div>`;
   html += `<div class="card">
     <div class="row"><h2 style="margin:0">מיומנויות</h2><b>${pct(sk.done,sk.total)}%</b></div>
@@ -512,8 +600,12 @@ VIEWS.home = () => {
 
 function banners(){
   let h="";
-  if(!storageOK) h+=`<div class="banner err">הדפדפן לא מאפשר שמירה מקומית כרגע. הנתונים לא יישמרו — שמור/י קובץ גיבוי מ"עוד ← גיבוי".</div>`;
+  if(loadProblem) h+=`<div class="banner err"><b>בעיה בנתונים השמורים:</b> ${esc(loadProblem.msg)}.
+    ${loadProblem.rawCopied ? "המקור נשמר בצד במכשיר." : "לא ניתן היה לשמור את המקור בצד — כדאי להוריד אותו עכשיו."}
+    <div class="btns" style="margin-top:8px"><button class="btn small sec" data-act="downloadRaw">הורד את הנתונים המקוריים</button><button class="btn small ghost" data-act="dismissLoadProblem">הבנתי</button></div></div>`;
+  if(!storageOK) h+=`<div class="banner err">הדפדפן לא מאפשר שמירה מקומית כרגע${storageError? " ("+esc(storageError)+")":""}. הנתונים לא יישמרו — שמור/י קובץ גיבוי מ"עוד ← גיבוי".</div>`;
   const s = stats();
+  if(s.duplicates.length) h+=`<div class="banner warn"><b>רשומות כפולות:</b> יותר מרשומה אחת מאותו סוג ב-${s.duplicates.map(fmtDate).join(", ")} — השעות נספרות פעמיים. <a href="#log">ליומן</a></div>`;
   if(s.missingDocs.length) h+=`<div class="banner warn"><b>אחרי היעדרות:</b> להביא אישור היעדרות (${s.missingDocs.map(a=>fmtDate(a.date)).join(", ")}) ולתאם השלמת שעות עם המדריך/ה. <a href="#log">ליומן</a></div>`;
   else if(s.absentDays > s.makeups) h+=`<div class="banner warn">${s.absentDays-s.makeups} ימי היעדרות עדיין ללא השלמה. לתאם עם המדריך/ה.</div>`;
   const last = STATE.meta.lastFileSave;
@@ -543,6 +635,7 @@ VIEWS.log = (sub, id) => {
     const flags = [];
     if(a.status==="absent") flags.push(a.absenceDocProvided? "אישור הועבר ✓" : "חסר אישור");
     flags.push(a.signed? "חתום ✓" : "לא חתום");
+    if(findDuplicate(a)) flags.push("⚠ כפול");
     html += `<a class="att" href="#log/edit/${a.id}" style="text-decoration:none;color:inherit">
       <div><div class="d">${dayName(a.date)} ${fmtDate(a.date)} · ${typeLabel(a.type)}</div>
       <div class="small muted">${esc(CONFIG.shiftShort[a.shift]||"")} · ${num(a.hours)} ש' · ${flags.join(" · ")}</div></div>${badge}</a>`;
@@ -562,11 +655,11 @@ function renderAttForm(){
   return `<a class="back" href="#log">→ חזרה ליומן</a>
   <div class="card" id="attForm">
     <h2>${f.id? "עריכת רשומה":"רשומה חדשה"}</h2>
-    <label class="f">תאריך</label><input type="date" id="fDate" value="${esc(f.date)}" min="2026-09-01" max="2026-12-31">
+    <label class="f">תאריך</label><input type="date" id="fDate" value="${esc(f.date)}" min="${CONFIG.dates.entryMin}" max="${CONFIG.dates.entryMax}">
     <label class="f">סוג</label>${seg("type",[["field","שדה"],["sim","סימולציה"]])}
     <label class="f">משמרת</label>${seg("shift",[["AM","בוקר"],["PM","ערב"],["NIGHT","לילה"]])}
     <label class="f">סטטוס</label>${seg("status",[["present","נוכח/ת"],["absent","נעדר/ת"],["makeup","השלמה"]])}
-    <label class="f">שעות</label><input type="number" id="fHours" inputmode="decimal" min="0" max="12" step="0.5" value="${esc(f.hours)}">
+    <label class="f">שעות</label><input type="number" id="fHours" inputmode="decimal" min="0" max="${CONFIG.hours.maxPerEntry}" step="0.5" value="${esc(f.hours)}">
     ${f.status==="absent" ? `<label class="chk"><input type="checkbox" id="fDoc" ${f.absenceDocProvided?"checked":""}> אישור היעדרות הועבר</label>` : ""}
     <label class="chk"><input type="checkbox" id="fSigned" ${f.signed?"checked":""}> חתימת מדריך/ה התקבלה</label>
     <div class="btns" style="margin-top:12px"><button class="btn" data-act="formSave">שמירה</button>${f.id?`<button class="btn danger" data-act="formDelete">מחיקה</button>`:""}</div>
@@ -687,8 +780,29 @@ VIEWS.backup = () => {
   <div class="small" style="margin:8px 0">גיבוי אחרון לקובץ: <b>${STATE.meta.lastFileSave? new Date(STATE.meta.lastFileSave).toLocaleString("he-IL") : "אף פעם"}</b></div>
   <div class="btns"><button class="btn" data-act="exportFile">שמור לקובץ</button><button class="btn sec" data-act="importPick">פתח קובץ</button></div></div>
   <div id="importPreview"></div>
+  ${preimportCard()}
   <div class="card small muted">כרגע במכשיר: ${STATE.attendance.length} רשומות יומן · ${Object.values(STATE.skills).filter(x=>x&&x.level).length} מיומנויות · ${num(s.total)} שעות.</div>`;
 };
+
+// The copy kept automatically before the last import (see doImport).
+function readPreimport(){
+  try{
+    const raw = localStorage.getItem(PREIMPORT_KEY);
+    return raw ? migrate(JSON.parse(raw)) : null;
+  }catch(e){ console.error("pre-import copy unreadable", e); return { error: e.message }; }
+}
+function summaryLine(s){
+  return `${s.attendance.length} רשומות יומן · ${Object.values(s.skills).filter(x=>x&&x.level).length} מיומנויות · ${num(stats(s).total)} שעות`;
+}
+function preimportCard(){
+  const p = readPreimport();
+  if(!p) return "";
+  if(p.error) return `<div class="banner err">העותק שנשמר לפני הטעינה האחרונה לא נקרא: ${esc(p.error)}</div>`;
+  return `<div class="card"><h2>החזרת המצב שלפני הטעינה</h2>
+    <div class="small muted">לפני הטעינה האחרונה נשמר עותק: ${summaryLine(p)} (שינוי אחרון: ${p.meta.lastChange? esc(new Date(p.meta.lastChange).toLocaleString("he-IL")) : "לא ידוע"}).</div>
+    <div class="small muted" style="margin-top:4px">ההחזרה מחליפה את המצב הנוכחי, והמצב הנוכחי נשמר במקום העותק — אפשר לבטל.</div>
+    <button class="btn sec" style="margin-top:10px" data-act="restorePreimport">החזר את העותק</button></div>`;
+}
 
 VIEWS.settings = () => {
   const st = STATE.student;
@@ -749,7 +863,14 @@ function parseHash(){
 function render(){
   route = parseHash();
   if(route.name!=="log" || !(route.parts[0]==="new"||route.parts[0]==="edit")) FORM=null;
-  $("#app").innerHTML = VIEWS[route.name](...route.parts);
+  try{
+    $("#app").innerHTML = VIEWS[route.name](...route.parts);
+  }catch(e){
+    console.error("render failed: "+route.name, e);
+    $("#app").innerHTML = `<div class="banner err"><b>שגיאה בהצגת המסך "${esc(route.name)}":</b> ${esc(e.message)}<br>
+      הנתונים לא נמחקו. כדאי לשמור קובץ גיבוי ולצלם את הודעת השגיאה.</div>
+      <div class="btns"><button class="btn" data-act="exportFile">שמור קובץ גיבוי</button><a class="btn sec" href="#home">למסך הבית</a></div>`;
+  }
   const tab = TAB_OF[route.name]||route.name;
   document.querySelectorAll("nav.bottom a").forEach(a=>a.classList.toggle("on", a.dataset.tab===tab));
   renderSaved();
@@ -769,11 +890,16 @@ const ACTIONS = {
   formSet(el){ readFormInputs(); FORM[el.dataset.field]=el.dataset.val; $("#app").innerHTML = renderAttForm(); },
   formSave(){
     readFormInputs();
-    if(!FORM.date){ alertMsg("יש לבחור תאריך"); return; }
+    if(!FORM.date || !DATE_RE.test(FORM.date)){ alertMsg("יש לבחור תאריך"); return; }
+    if(FORM.date < CONFIG.dates.entryMin || FORM.date > CONFIG.dates.entryMax){
+      alertMsg("התאריך מחוץ לטווח ("+fmtDate(CONFIG.dates.entryMin)+"–"+fmtDate(CONFIG.dates.entryMax)+")"); return;
+    }
     const h = Number(FORM.hours);
-    if(isNaN(h) || h<0 || h>24){ alertMsg("מספר שעות לא תקין"); return; }
+    if(FORM.hours==="" || isNaN(h) || h<0 || h>CONFIG.hours.maxPerEntry){ alertMsg("מספר שעות לא תקין (0–"+CONFIG.hours.maxPerEntry+")"); return; }
     FORM.hours = h;
     if(FORM.status!=="absent") FORM.absenceDocProvided=false;
+    const dup = findDuplicate(FORM);
+    if(dup && !confirm("כבר קיימת רשומת "+typeLabel(FORM.type)+" ב-"+fmtDate(FORM.date)+" ("+statusLabel(dup.status)+", "+num(dup.hours)+" ש'). שמירה תיצור רשומה כפולה והשעות ייספרו פעמיים. לשמור בכל זאת?")) return;
     if(FORM.id){ const i=STATE.attendance.findIndex(a=>a.id===FORM.id); STATE.attendance[i]=Object.assign({},FORM); }
     else { FORM.id=uid(); STATE.attendance.push(Object.assign({},FORM)); }
     commit(); location.hash="#log";
@@ -805,6 +931,21 @@ const ACTIONS = {
     if(!confirm("בטוח? פעולה זו אינה הפיכה (אלא אם שמרת קובץ גיבוי).")) return;
     STATE = blankState(); persist(); location.hash="#home"; render();
   },
+  restorePreimport(){
+    const p = readPreimport();
+    if(!p || p.error) return;
+    if(!confirm("להחליף את המצב הנוכחי בעותק שלפני הטעינה?\nהמצב הנוכחי יישמר במקומו, כך שאפשר להחזיר שוב.")) return;
+    localStorage.setItem(PREIMPORT_KEY, JSON.stringify(STATE));
+    STATE = p; persist();
+    location.hash = "#home"; render();
+  },
+  downloadRaw(){
+    let raw = loadProblem && loadProblem.raw;
+    if(!raw){ try{ raw = localStorage.getItem(RAW_COPY_KEY); }catch(e){ console.error(e); } }
+    if(!raw){ showError("לא נמצא עותק של הנתונים המקוריים."); return; }
+    downloadBlob(new Blob([raw], {type:"application/json"}), "clinical-original-"+todayISO()+".json");
+  },
+  dismissLoadProblem(){ loadProblem = null; rerenderKeepScroll(); },
   print(){ window.print(); },
   goBack(){ history.length>1 ? history.back() : (location.hash="#home"); }
 };
@@ -816,8 +957,18 @@ document.addEventListener("click", e=>{
   if(el.type==="checkbox") return; // handled on change
   e.preventDefault();
   const fn = ACTIONS[el.dataset.act];
-  if(fn) fn(el);
+  if(!fn) return;
+  try{ fn(el); }
+  catch(err){ console.error("action failed: "+el.dataset.act, err); showError("הפעולה נכשלה ("+el.dataset.act+"): "+err.message); }
 });
+function showError(msg){
+  const box = $("#err");
+  box.innerHTML = `${esc(msg)} <button class="btn small ghost" style="margin-inline-start:8px" onclick="this.parentNode.hidden=true">סגירה</button>`;
+  box.hidden = false;
+  window.scrollTo(0,0);
+}
+window.addEventListener("error", e=>{ console.error("uncaught", e.error||e.message); showError("שגיאה: "+(e.message||"לא ידועה")); });
+window.addEventListener("unhandledrejection", e=>{ console.error("unhandled rejection", e.reason); showError("שגיאה: "+((e.reason&&e.reason.message)||e.reason)); });
 document.addEventListener("change", e=>{
   const el=e.target;
   if(el.dataset && el.dataset.act==="expToggle") ACTIONS.expToggle(el);
@@ -850,9 +1001,12 @@ async function exportFile(){
     if(err && err.name==="AbortError") return;
     console.error("share failed, falling back to download", err);
   }
+  downloadBlob(blob, name);
+  markSaved();
+}
+function downloadBlob(blob, name){
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
   document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 1000);
-  markSaved();
 }
 function markSaved(){ STATE.meta.lastFileSave=new Date().toISOString(); commit(); if(route.name==="backup") rerenderKeepScroll(); }
 
@@ -866,11 +1020,18 @@ $("#fileIn").addEventListener("change", e=>{
     catch(err){ console.error(err); showImportError("הקובץ אינו JSON תקין: "+err.message); return; }
     if(!data || typeof data!=="object" || !("schemaVersion" in data) || !Array.isArray(data.attendance)){ showImportError("הקובץ אינו קובץ גיבוי של המערכת."); return; }
     if(data.schemaVersion > SCHEMA_VERSION){ showImportError("הקובץ נוצר בגרסה חדשה יותר של המערכת (schema "+data.schemaVersion+")."); return; }
-    PENDING_IMPORT=data;
-    const att=data.attendance.length, sk=Object.values(data.skills||{}).filter(x=>x&&x.level).length;
-    const when=data.exportedAt? new Date(data.exportedAt).toLocaleString("he-IL") : "לא ידוע";
+    const exportedAt = data.exportedAt;
+    const report = { dropped: 0 };
+    let clean;
+    try{ const d = Object.assign({}, data); delete d.exportedAt; clean = migrate(d, report); }
+    catch(err){ console.error("import validation failed", err); showImportError("הקובץ לא תקין: "+err.message); return; }
+    PENDING_IMPORT=clean;
+    const att=clean.attendance.length, sk=Object.values(clean.skills).filter(x=>x&&x.level).length;
+    const exDate = exportedAt ? new Date(exportedAt) : null;
+    const when = exDate && !isNaN(exDate) ? exDate.toLocaleString("he-IL") : "לא ידוע";
     $("#importPreview").innerHTML = `<div class="card"><h2>טעינת גיבוי</h2>
-      <ul class="list small"><li>נשמר: <b>${esc(when)}</b></li><li>רשומות יומן: <b>${att}</b></li><li>מיומנויות מסומנות: <b>${sk}</b></li><li>מטופלים: <b>${(data.patients||[]).length}</b></li><li>סטודנט/ית: <b>${esc((data.student&&data.student.name)||"—")}</b></li></ul>
+      <ul class="list small"><li>נשמר: <b>${esc(when)}</b></li><li>רשומות יומן: <b>${att}</b></li><li>מיומנויות מסומנות: <b>${sk}</b></li><li>מטופלים: <b>${clean.patients.length}</b></li><li>סטודנט/ית: <b>${esc(clean.student.name||"—")}</b></li></ul>
+      ${report.dropped? `<div class="banner err" style="margin-top:8px">${report.dropped} רשומות בקובץ אינן תקינות ולא ייטענו.</div>`:""}
       <div class="banner warn" style="margin-top:8px">הטעינה תחליף את כל הנתונים הנוכחיים. עותק של המצב הנוכחי יישמר במכשיר לפני ההחלפה.</div>
       <div class="btns"><button class="btn" data-act="importConfirm">טען והחלף</button><button class="btn ghost" data-act="importCancel">ביטול</button></div></div>`;
   };
@@ -882,8 +1043,7 @@ function doImport(){
   if(!PENDING_IMPORT) return;
   try{ localStorage.setItem(PREIMPORT_KEY, JSON.stringify(STATE)); }
   catch(e){ console.error("pre-import copy failed", e); if(!confirm("לא ניתן לשמור עותק של המצב הנוכחי ("+e.message+"). להמשיך בכל זאת?")) return; }
-  const d = Object.assign({}, PENDING_IMPORT); delete d.exportedAt;
-  STATE = migrate(d); PENDING_IMPORT=null; persist();
+  STATE = PENDING_IMPORT; PENDING_IMPORT=null; persist();
   location.hash="#home"; render();
 }
 
